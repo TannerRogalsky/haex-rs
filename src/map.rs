@@ -3,7 +3,7 @@ use enumflags2::*;
 #[bitflags]
 #[repr(u8)]
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-enum Direction {
+pub enum Direction {
     N = 1 << 0,
     E = 1 << 1,
     S = 1 << 2,
@@ -343,6 +343,32 @@ impl Map {
         }
     }
 
+    pub fn path(&self) -> &[Coord] {
+        &self.longest_path
+    }
+
+    pub fn valid_move(&self, start: Coord, direction: Direction) -> Option<Coord> {
+        let v = self.grid.data.get(self.grid.coord_to_index(start))?;
+        if v.contains(direction) {
+            let (dx, dy) = direction.into_dir();
+            let nx = start.0 as i32 + dx as i32;
+            let ny = start.1 as i32 + dy as i32;
+            if nx >= 0 && ny >= 0 {
+                let coord = (nx as usize, ny as usize);
+                let target = self.grid.coord_to_index(coord);
+                if target < self.grid.data.len() {
+                    Some(coord)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
     pub fn draw_graph(&self, width: f32, height: f32, g: &mut solstice_2d::GraphicsLock) {
         let dx = width / self.grid.width as f32;
         let dy = height / self.grid.height as f32;
@@ -352,8 +378,14 @@ impl Map {
             segments: 6,
             ..Default::default()
         };
-        let mut traversal = petgraph::visit::Dfs::new(&self.graph, (0, 0));
+        let mut traversal = petgraph::visit::Bfs::new(&self.graph, (0, 0));
         while let Some((x, y)) = traversal.next(&self.graph) {
+            let color = if self.longest_path.contains(&(x, y)) {
+                [1., 1., 1., 1.]
+            } else {
+                [0., 0., 0., 1.]
+            };
+
             let (tx, ty) = ((x as f32 + 0.5) * dx, (y as f32 + 0.5) * dy);
             for (nx, ny) in self.graph.neighbors((x, y)) {
                 let (ntx, nty) = ((nx as f32 + 0.5) * dx, (ny as f32 + 0.5) * dy);
@@ -361,22 +393,17 @@ impl Map {
                     solstice_2d::LineVertex {
                         position: [tx, ty, 0.],
                         width: 2.,
-                        color: [1., 1., 1., 1.],
+                        color,
                     },
                     solstice_2d::LineVertex {
                         position: [ntx, nty, 0.],
                         width: 2.,
-                        color: [1., 1., 1., 1.],
+                        color,
                     },
                 ]);
             }
             let transform = solstice_2d::Transform2D::translation(tx, ty);
             use solstice_2d::Draw;
-            let color = if self.longest_path.contains(&(x, y)) {
-                solstice_2d::Color::new(1., 1., 1., 1.)
-            } else {
-                solstice_2d::Color::new(0., 0., 0., 1.)
-            };
             g.draw_with_color_and_transform(circle, color, transform);
         }
     }

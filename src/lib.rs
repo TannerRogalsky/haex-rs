@@ -1,4 +1,5 @@
 mod map;
+mod player;
 pub mod resources;
 mod state;
 #[cfg(target_arch = "wasm32")]
@@ -32,6 +33,23 @@ struct InputState {
 struct Map {
     map: map::Map,
     batch: solstice::quad_batch::QuadBatch<Vertex2D>,
+    tile_size: (f32, f32),
+}
+
+impl Map {
+    pub fn coord_to_mid_pixel(&self, coord: map::Coord) -> (f32, f32) {
+        self.scale((coord.0 as f32 + 0.5, coord.1 as f32 + 0.5))
+    }
+
+    fn scale(&self, (x, y): (f32, f32)) -> (f32, f32) {
+        (x * self.tile_size.0, y * self.tile_size.1)
+    }
+
+    pub fn pixel_to_coord(&self, (x, y): (f32, f32)) -> map::Coord {
+        let x = (x / self.tile_size.0).floor() as usize;
+        let y = (y / self.tile_size.1).floor() as usize;
+        (x, y)
+    }
 }
 
 pub struct Game {
@@ -41,6 +59,7 @@ pub struct Game {
     canvas: solstice_2d::Canvas,
     game_state: state::State,
     map: Map,
+    player: player::Player,
     input_state: InputState,
     resources: resources::LoadedResources,
     time: std::time::Duration,
@@ -65,23 +84,31 @@ impl Game {
 
         let mut rng = {
             use rand::SeedableRng;
-            rand::rngs::SmallRng::seed_from_u64(0)
+            rand::rngs::SmallRng::seed_from_u64(2)
         };
 
         let map = {
             let (width, height) = (10, 10);
+            let tile_width = 256. / width as f32;
+            let tile_height = 256. / height as f32;
             let map = map::Map::new(width, height, &mut rng);
-            let batch = map::create_batch(
-                256. / width as f32,
-                256. / height as f32,
-                &map,
-                &resources.sprites_metadata,
-            );
+            let batch =
+                map::create_batch(tile_width, tile_height, &map, &resources.sprites_metadata);
             let mut sp = solstice::quad_batch::QuadBatch::new(&mut ctx, batch.len())?;
             for quad in batch {
                 sp.push(quad);
             }
-            Map { map, batch: sp }
+            Map {
+                map,
+                batch: sp,
+                tile_size: (tile_width, tile_height),
+            }
+        };
+
+        let player = {
+            let start = map.map.path()[0];
+            let (x, y) = map.coord_to_mid_pixel(start);
+            player::Player::new(x, y)
         };
 
         Ok(Self {
@@ -95,6 +122,7 @@ impl Game {
             canvas,
             game_state: state::State::new(),
             map,
+            player,
         })
     }
 
@@ -104,6 +132,31 @@ impl Game {
             (callback)(&mut ())
         }
         self.time = time;
+
+        {
+            let direction = if self.input_state.w {
+                Some(map::Direction::N)
+            } else if self.input_state.s {
+                Some(map::Direction::S)
+            } else if self.input_state.a {
+                Some(map::Direction::W)
+            } else if self.input_state.d {
+                Some(map::Direction::E)
+            } else {
+                None
+            };
+
+            if let Some(direction) = direction {
+                let start = self.map.pixel_to_coord(self.player.position());
+                if let Some(end) = self.map.map.valid_move(start, direction) {
+                    let (x, y) = self.map.coord_to_mid_pixel(end);
+                    let time = std::time::Duration::from_secs_f32(0.2);
+                    self.player.try_move(x, y, time);
+                }
+            }
+
+            self.player.update(dt);
+        }
 
         let (width, height) = {
             let vw = self.gfx.viewport();
@@ -146,6 +199,23 @@ impl Game {
         g.set_shader(None);
         g.image(map, &self.resources.sprites);
         self.map.map.draw_graph(256., 256., &mut g);
+
+        {
+            let (x, y) = self.player.position();
+            let rot = solstice_2d::Rad(self.time.as_secs_f32());
+            let tx = solstice_2d::Transform2D::translation(x, y);
+            let tx = tx * solstice_2d::Transform2D::rotation(rot);
+            g.draw_with_color_and_transform(
+                solstice_2d::Circle {
+                    x: 0.,
+                    y: 0.,
+                    radius: 5.,
+                    segments: 4,
+                },
+                [0.6, 1., 0.4, 1.0],
+                tx,
+            );
+        }
 
         g.set_canvas(None);
 
