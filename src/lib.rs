@@ -145,6 +145,7 @@ impl Game {
 
         g.set_shader(None);
         g.image(map, &self.resources.sprites);
+        self.map.map.draw_graph(256., 256., &mut g);
 
         g.set_canvas(None);
 

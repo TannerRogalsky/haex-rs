@@ -40,6 +40,10 @@ impl Direction {
             Direction::NWC => Direction::SEC,
         }
     }
+
+    pub fn cardinals() -> [Direction; 4] {
+        [Direction::N, Direction::E, Direction::S, Direction::W]
+    }
 }
 
 pub fn create_batch(
@@ -50,22 +54,22 @@ pub fn create_batch(
 ) -> Vec<solstice_2d::solstice::quad_batch::Quad<solstice_2d::Vertex2D>> {
     use solstice_2d::solstice::{quad_batch::Quad, viewport::Viewport};
 
-    let mut quads = Vec::with_capacity(map.width * map.height);
+    let mut quads = Vec::with_capacity(map.grid.width * map.grid.height);
 
-    for x in 0..map.width {
-        for y in 0..map.height {
-            let index = x + y * map.width;
-            let cell = map.grid[index];
+    for x in 0..map.grid.width {
+        for y in 0..map.grid.height {
+            let index = map.grid.coord_to_index((x, y));
+            let cell = map.grid.data[index];
 
             let name = if cell.is_empty() {
                 "tiles/tile_342.png"
-            } else if cell == BitFlags::<Direction>::from(Direction::N) {
+            } else if cell == Direction::N {
                 "tiles/tile_286.png"
-            } else if cell == BitFlags::<Direction>::from(Direction::E) {
+            } else if cell == Direction::E {
                 "tiles/tile_313.png"
-            } else if cell == BitFlags::<Direction>::from(Direction::S) {
+            } else if cell == Direction::S {
                 "tiles/tile_312.png"
-            } else if cell == BitFlags::<Direction>::from(Direction::W) {
+            } else if cell == Direction::W {
                 "tiles/tile_285.png"
             } else if cell == Direction::N | Direction::E {
                 "tiles/tile_307.png"
@@ -241,10 +245,67 @@ pub fn create_batch(
 }
 
 #[derive(Debug)]
-pub struct Map {
-    grid: Box<[BitFlags<Direction>]>,
+struct Grid {
+    data: Box<[BitFlags<Direction>]>,
     width: usize,
     height: usize,
+}
+
+impl Grid {
+    fn coord_to_index(&self, coord: Coord) -> usize {
+        coord.0 + coord.1 * self.width
+    }
+
+    fn index_to_coord(&self, index: usize) -> Coord {
+        (index % self.width, index / self.width)
+    }
+
+    fn as_graph(&self) -> Graph {
+        let mut graph = Graph::with_capacity(self.data.len(), self.data.len() * 2);
+
+        let origin = self.index_to_coord(0);
+        graph.add_node(origin);
+        self.add_node(&mut graph, origin);
+
+        graph
+    }
+
+    fn add_node(&self, graph: &mut Graph, origin: Coord) {
+        let v = &self.data[self.coord_to_index(origin)];
+        for direction in Direction::cardinals().iter().copied() {
+            if v.contains(direction) {
+                let (dx, dy) = direction.into_dir();
+                let (nx, ny) = (origin.0 as i32 + dx as i32, origin.1 as i32 + dy as i32);
+                let next = (nx as usize, ny as usize);
+                if !graph.contains_node(next) {
+                    graph.add_node(next);
+                    graph.add_edge(origin, next, ());
+                    self.add_node(graph, next);
+                }
+            }
+        }
+    }
+}
+
+fn dead_ends(graph: &Graph) -> impl Iterator<Item = Coord> + '_ {
+    let traversal = petgraph::visit::Dfs::new(graph, (0, 0));
+    petgraph::visit::Walker::iter(traversal, graph).filter_map(move |node| {
+        if graph.neighbors(node).count() == 1 {
+            Some(node)
+        } else {
+            None
+        }
+    })
+}
+
+type Graph = petgraph::graphmap::UnGraphMap<Coord, ()>;
+pub type Coord = (usize, usize);
+
+#[derive(Debug)]
+pub struct Map {
+    grid: Grid,
+    graph: Graph,
+    longest_path: Vec<Coord>,
 }
 
 impl Map {
@@ -255,10 +316,68 @@ impl Map {
             ..Default::default()
         };
         let grid = growing_tree(width, height, weights, rng);
-        Self {
-            grid: grid.into_boxed_slice(),
+        let grid = Grid {
+            data: grid.into_boxed_slice(),
             width,
             height,
+        };
+        let graph = grid.as_graph();
+
+        let dead_ends = dead_ends(&graph).collect::<Vec<_>>();
+        let mut longest_path = vec![];
+        for from in dead_ends.iter().copied() {
+            for to in dead_ends.iter().copied() {
+                let path = petgraph::algo::astar(&graph, from, |node| node == to, |_| 1, |_| 0);
+                if let Some((_cost, path)) = path {
+                    if path.len() > longest_path.len() {
+                        longest_path = path;
+                    }
+                }
+            }
+        }
+
+        Self {
+            grid,
+            graph,
+            longest_path,
+        }
+    }
+
+    pub fn draw_graph(&self, width: f32, height: f32, g: &mut solstice_2d::GraphicsLock) {
+        let dx = width / self.grid.width as f32;
+        let dy = height / self.grid.height as f32;
+
+        let circle = solstice_2d::Circle {
+            radius: dx * 0.2,
+            segments: 6,
+            ..Default::default()
+        };
+        let mut traversal = petgraph::visit::Dfs::new(&self.graph, (0, 0));
+        while let Some((x, y)) = traversal.next(&self.graph) {
+            let (tx, ty) = ((x as f32 + 0.5) * dx, (y as f32 + 0.5) * dy);
+            for (nx, ny) in self.graph.neighbors((x, y)) {
+                let (ntx, nty) = ((nx as f32 + 0.5) * dx, (ny as f32 + 0.5) * dy);
+                g.line_2d(vec![
+                    solstice_2d::LineVertex {
+                        position: [tx, ty, 0.],
+                        width: 2.,
+                        color: [1., 1., 1., 1.],
+                    },
+                    solstice_2d::LineVertex {
+                        position: [ntx, nty, 0.],
+                        width: 2.,
+                        color: [1., 1., 1., 1.],
+                    },
+                ]);
+            }
+            let transform = solstice_2d::Transform2D::translation(tx, ty);
+            use solstice_2d::Draw;
+            let color = if self.longest_path.contains(&(x, y)) {
+                solstice_2d::Color::new(1., 1., 1., 1.)
+            } else {
+                solstice_2d::Color::new(0., 0., 0., 1.)
+            };
+            g.draw_with_color_and_transform(circle, color, transform);
         }
     }
 }
@@ -317,7 +436,7 @@ where
     cells.push((rng.gen_range(0..width), rng.gen_range(0..height)));
 
     let mut grid = vec![BitFlags::empty(); width * height];
-    let mut cardinal_directions = [Direction::N, Direction::S, Direction::E, Direction::W];
+    let mut cardinal_directions = Direction::cardinals();
 
     while !cells.is_empty() {
         let selector = choices[rand::distributions::Distribution::sample(&dist, rng)];
@@ -378,6 +497,49 @@ mod tests {
         assert_eq!(grid.len(), 3 * 3);
         for cell in grid {
             assert_ne!(cell, BitFlags::empty());
+        }
+    }
+
+    #[test]
+    fn graph_test() {
+        use rand::SeedableRng;
+        let mut rng = rand::rngs::SmallRng::seed_from_u64(0);
+        let grid = growing_tree(
+            3,
+            3,
+            Weights {
+                random: 1.0,
+                newest: 1.0,
+                middle: 0.0,
+                oldest: 0.0,
+            },
+            &mut rng,
+        );
+
+        let grid = Grid {
+            data: grid.into_boxed_slice(),
+            width: 3,
+            height: 3,
+        };
+        let graph = grid.as_graph();
+
+        for x in 0..3 {
+            for y in 0..3 {
+                let coord = (x, y);
+                let index = grid.coord_to_index(coord);
+
+                for neighbor in graph.neighbors(coord) {
+                    let dx = neighbor.0 as i32 - coord.0 as i32;
+                    let dy = neighbor.1 as i32 - coord.1 as i32;
+
+                    let directions = grid.data[index];
+                    let valid = directions.iter().any(|direction| {
+                        let (nx, ny) = direction.into_dir();
+                        nx as i32 == dx && ny as i32 == dy
+                    });
+                    assert!(valid, "({:?} -> {:?})", coord, neighbor);
+                }
+            }
         }
     }
 }

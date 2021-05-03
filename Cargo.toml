@@ -16,6 +16,7 @@ serde = { version = "1.0", features = ["derive"] }
 enumflags2 = "0.7"
 rand = { version = "0.8", default-features = false, features = ["small_rng"] }
 rand_distr = "0.4"
+petgraph = "0.5"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 glutin = "0.26"
