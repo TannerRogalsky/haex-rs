@@ -1,4 +1,6 @@
+mod map;
 pub mod resources;
+mod state;
 #[cfg(target_arch = "wasm32")]
 pub mod web;
 
@@ -27,11 +29,18 @@ struct InputState {
     mouse_position: (f32, f32),
 }
 
+struct Map {
+    map: map::Map,
+    batch: solstice::quad_batch::QuadBatch<Vertex2D>,
+}
+
 pub struct Game {
     ctx: Context,
     gfx: solstice_2d::Graphics,
     batch: solstice::quad_batch::QuadBatch<Vertex2D>,
     canvas: solstice_2d::Canvas,
+    game_state: state::State,
+    map: Map,
     input_state: InputState,
     resources: resources::LoadedResources,
     time: std::time::Duration,
@@ -54,6 +63,27 @@ impl Game {
 
         let cron = cron::Cron::default();
 
+        let mut rng = {
+            use rand::SeedableRng;
+            rand::rngs::SmallRng::seed_from_u64(0)
+        };
+
+        let map = {
+            let (width, height) = (10, 10);
+            let map = map::Map::new(width, height, &mut rng);
+            let batch = map::create_batch(
+                256. / width as f32,
+                256. / height as f32,
+                &map,
+                &resources.sprites_metadata,
+            );
+            let mut sp = solstice::quad_batch::QuadBatch::new(&mut ctx, batch.len())?;
+            for quad in batch {
+                sp.push(quad);
+            }
+            Map { map, batch: sp }
+        };
+
         Ok(Self {
             ctx,
             gfx,
@@ -63,6 +93,8 @@ impl Game {
             cron,
             batch,
             canvas,
+            game_state: state::State::new(),
+            map,
         })
     }
 
@@ -100,6 +132,8 @@ impl Game {
             shader.send_uniform("elapsed", self.time.as_secs_f32());
         }
 
+        let map = self.map.batch.unmap(&mut self.ctx);
+
         let mut g = self.gfx.lock(&mut self.ctx);
         let black = Color::new(0., 0., 0., 1.);
         g.clear(black);
@@ -108,6 +142,10 @@ impl Game {
         g.clear(black);
         g.set_shader(Some(self.resources.shaders.menu.clone()));
         g.image(geometry, &self.resources.sprites);
+
+        g.set_shader(None);
+        g.image(map, &self.resources.sprites);
+
         g.set_canvas(None);
 
         g.set_shader(Some({
@@ -122,15 +160,20 @@ impl Game {
             shader.send_uniform("tex1", solstice::shader::RawUniformValue::SignedInt(unit));
             shader
         }));
-        g.image(
-            Rectangle {
-                x: 0.0,
-                y: 0.0,
-                width: height,
-                height,
-            },
-            self.canvas.clone(),
-        );
+
+        {
+            let d = width.min(height);
+            let x = width / 2. - d / 2.;
+            g.image(
+                Rectangle {
+                    x,
+                    y: 0.0,
+                    width: d,
+                    height: d,
+                },
+                self.canvas.clone(),
+            );
+        }
     }
 
     pub fn handle_key_event(&mut self, state: ElementState, key_code: VirtualKeyCode) {
@@ -161,6 +204,8 @@ impl Game {
                 }
             }
         }
+
+        self.game_state.handle_mouse_event(event);
     }
 
     pub fn handle_resize(&mut self, width: f32, height: f32) {
