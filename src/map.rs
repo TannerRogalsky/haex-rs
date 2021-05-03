@@ -369,10 +369,7 @@ impl Map {
         }
     }
 
-    pub fn draw_graph(&self, width: f32, height: f32, g: &mut solstice_2d::GraphicsLock) {
-        let dx = width / self.grid.width as f32;
-        let dy = height / self.grid.height as f32;
-
+    pub fn draw_graph(&self, dx: f32, dy: f32, g: &mut solstice_2d::GraphicsLock) {
         let circle = solstice_2d::Circle {
             radius: dx * 0.2,
             segments: 6,

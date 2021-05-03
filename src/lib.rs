@@ -12,7 +12,7 @@ use winit::event::{ElementState, MouseButton, VirtualKeyCode};
 
 use solstice_2d::{
     solstice::{self, Context},
-    Color, Draw, Rectangle, Vertex2D,
+    Color, Draw, Vertex2D,
 };
 
 pub enum MouseEvent {
@@ -158,11 +158,6 @@ impl Game {
             self.player.update(dt);
         }
 
-        let (width, height) = {
-            let vw = self.gfx.viewport();
-            (vw.width() as f32, vw.height() as f32)
-        };
-
         self.batch.clear();
         let uvs = self
             .resources
@@ -186,6 +181,7 @@ impl Game {
         }
 
         let map = self.map.batch.unmap(&mut self.ctx);
+        let viewport = *self.gfx.viewport();
 
         let mut g = self.gfx.lock(&mut self.ctx);
         let black = Color::new(0., 0., 0., 1.);
@@ -198,7 +194,11 @@ impl Game {
 
         g.set_shader(None);
         g.image(map, &self.resources.sprites);
-        self.map.map.draw_graph(256., 256., &mut g);
+
+        {
+            let (w, h) = self.map.tile_size;
+            self.map.map.draw_graph(w, h, &mut g);
+        }
 
         {
             let (x, y) = self.player.position();
@@ -233,17 +233,28 @@ impl Game {
         }));
 
         {
-            let d = width.min(height);
-            let x = width / 2. - d / 2.;
-            g.image(
-                Rectangle {
-                    x,
-                    y: 0.0,
-                    width: d,
-                    height: d,
+            let fovy = std::f32::consts::FRAC_PI_2;
+            let aspect = viewport.width() as f32 / viewport.height() as f32;
+            g.set_projection_mode(Some(solstice_2d::Projection::Perspective(Some(
+                solstice_2d::Perspective {
+                    aspect,
+                    fovy,
+                    near: 0.1,
+                    far: 1000.0,
                 },
-                self.canvas.clone(),
-            );
+            ))));
+
+            let d = 1.;
+            let dist = d / 2. / fovy.tan();
+
+            let geometry = solstice_2d::Box::new(d, d, d, 1, 1, 1);
+            let tx = solstice_2d::Transform3D::translation(0., 0., dist - d);
+            // let pitch = solstice_2d::Rad(self.time.as_secs_f32());
+            // let zero = solstice_2d::Rad(0.);
+            // let tx = tx * solstice_2d::Transform3D::rotation(zero, pitch, zero);
+
+            g.image_with_transform(geometry, self.canvas.clone(), tx);
+            g.set_projection_mode(None);
         }
     }
 
