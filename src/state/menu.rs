@@ -1,4 +1,4 @@
-use super::{Map, State, StateContext};
+use super::{State, StateContext};
 use solstice_2d::{solstice, Color, Draw};
 
 pub struct Menu;
@@ -67,44 +67,12 @@ impl Menu {
 
     pub fn handle_key_event(
         &mut self,
-        ctx: StateContext,
+        mut ctx: StateContext,
         _state: crate::ElementState,
         _key_code: crate::VirtualKeyCode,
     ) -> Option<State> {
-        let mut rng = {
-            use rand::SeedableRng;
-            rand::rngs::SmallRng::seed_from_u64(2)
-        };
-
-        let map = {
-            let (width, height) = (10, 10);
-            let tile_width = 256. / width as f32;
-            let tile_height = 256. / height as f32;
-            let map = crate::map::Map::new(width, height, &mut rng);
-            let batch = crate::map::create_batch(
-                tile_width,
-                tile_height,
-                &map,
-                &ctx.resources.sprites_metadata,
-            );
-            let mut sp = solstice::quad_batch::QuadBatch::new(ctx.ctx, batch.len()).ok()?;
-            for quad in batch {
-                sp.push(quad);
-            }
-            Map {
-                map,
-                batch: sp,
-                tile_size: (tile_width, tile_height),
-            }
-        };
-
-        let player = {
-            let start = map.map.path()[0];
-            let (x, y) = map.coord_to_mid_pixel(start);
-            crate::player::Player::new(x, y)
-        };
-
-        Some(State::Main(super::main::Main { map, player }))
+        let main = super::main::Main::new(&mut ctx).ok()?;
+        Some(State::Main(main))
     }
 
     pub fn handle_mouse_event(&mut self, _event: crate::MouseEvent) -> Option<State> {

@@ -48,7 +48,7 @@ impl Static {
 
 pub struct Game {
     shared: Static,
-    game_state: state::State,
+    game_state: Option<state::State>,
     cron: cron::Cron<()>,
 }
 
@@ -77,7 +77,7 @@ impl Game {
                 time,
             },
             cron,
-            game_state: state::State::new(),
+            game_state: Some(state::State::new()),
         })
     }
 
@@ -88,13 +88,19 @@ impl Game {
         }
         self.shared.time = time;
 
-        self.game_state.update(dt, self.shared.as_ctx());
+        self.game_state = self
+            .game_state
+            .take()
+            .map(|state| state.update(dt, self.shared.as_ctx()));
 
         for shader in self.shared.resources.shaders.iter_mut() {
             shader.send_uniform("elapsed", self.shared.time.as_secs_f32());
         }
 
-        self.game_state.render(self.shared.as_ctx());
+        self.game_state
+            .as_mut()
+            .unwrap()
+            .render(self.shared.as_ctx());
     }
 
     pub fn handle_key_event(&mut self, state: ElementState, key_code: VirtualKeyCode) {
@@ -111,6 +117,8 @@ impl Game {
         };
 
         self.game_state
+            .as_mut()
+            .unwrap()
             .handle_key_event(self.shared.as_ctx(), state, key_code);
     }
 
@@ -130,6 +138,8 @@ impl Game {
         }
 
         self.game_state
+            .as_mut()
+            .unwrap()
             .handle_mouse_event(self.shared.as_ctx(), event);
     }
 

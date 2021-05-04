@@ -1,4 +1,5 @@
 mod main;
+mod main_to_main;
 mod menu;
 
 pub struct StateContext<'a> {
@@ -17,6 +18,45 @@ pub struct Map {
 }
 
 impl Map {
+    pub fn new(
+        width: usize,
+        height: usize,
+        ctx: &mut StateContext,
+    ) -> Result<Self, solstice_2d::GraphicsError> {
+        let mut rng = {
+            use rand::SeedableRng;
+            rand::rngs::SmallRng::seed_from_u64(2)
+        };
+
+        Self::gen(width, height, ctx, &mut rng)
+    }
+
+    pub fn gen<R: rand::RngCore>(
+        width: usize,
+        height: usize,
+        ctx: &mut StateContext,
+        rng: &mut R,
+    ) -> Result<Self, solstice_2d::GraphicsError> {
+        let tile_width = 256. / width as f32;
+        let tile_height = 256. / height as f32;
+        let map = crate::map::Map::new(width, height, rng);
+        let batch = crate::map::create_batch(
+            tile_width,
+            tile_height,
+            &map,
+            &ctx.resources.sprites_metadata,
+        );
+        let mut sp = solstice_2d::solstice::quad_batch::QuadBatch::new(ctx.ctx, batch.len())?;
+        for quad in batch {
+            sp.push(quad);
+        }
+        Ok(Map {
+            map,
+            batch: sp,
+            tile_size: (tile_width, tile_height),
+        })
+    }
+
     pub fn coord_to_mid_pixel(&self, coord: crate::map::Coord) -> (f32, f32) {
         self.scale((coord.0 as f32 + 0.5, coord.1 as f32 + 0.5))
     }
@@ -35,7 +75,7 @@ impl Map {
 pub enum State {
     Menu(menu::Menu),
     Main(main::Main),
-    // Over,
+    MainToMain(main_to_main::MainToMain), // Over,
 }
 
 impl State {
@@ -43,10 +83,11 @@ impl State {
         Self::Menu(menu::Menu)
     }
 
-    pub fn update(&mut self, dt: std::time::Duration, ctx: StateContext) {
+    pub fn update(self, dt: std::time::Duration, ctx: StateContext) -> Self {
         match self {
-            State::Menu(_) => {}
             State::Main(main) => main.update(dt, ctx),
+            State::MainToMain(inner) => inner.update(dt, ctx),
+            _ => self,
         }
     }
 
@@ -54,6 +95,7 @@ impl State {
         match self {
             State::Menu(menu) => menu.render(ctx),
             State::Main(main) => main.render(ctx),
+            State::MainToMain(inner) => inner.render(ctx),
         }
     }
 
@@ -65,6 +107,7 @@ impl State {
                 }
             }
             State::Main(_) => {}
+            State::MainToMain(_) => {}
         }
     }
 
@@ -81,6 +124,7 @@ impl State {
                 }
             }
             State::Main(_) => {}
+            State::MainToMain(_) => {}
         }
     }
 }

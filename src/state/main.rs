@@ -1,4 +1,4 @@
-use super::{Map, StateContext};
+use super::{Map, State, StateContext};
 use solstice_2d::{Color, Draw};
 
 pub struct Main {
@@ -7,7 +7,19 @@ pub struct Main {
 }
 
 impl Main {
-    pub fn update(&mut self, dt: std::time::Duration, ctx: StateContext) {
+    pub fn new(ctx: &mut StateContext) -> Result<Self, solstice_2d::GraphicsError> {
+        let map = Map::new(10, 10, ctx)?;
+
+        let player = {
+            let start = map.map.path()[0];
+            let (x, y) = map.coord_to_mid_pixel(start);
+            crate::player::Player::new(x, y)
+        };
+
+        Ok(Self { map, player })
+    }
+
+    pub fn update(mut self, dt: std::time::Duration, mut ctx: StateContext) -> State {
         use crate::map;
         let direction = if ctx.input_state.w {
             Some(map::Direction::N)
@@ -31,6 +43,21 @@ impl Main {
         }
 
         self.player.update(dt);
+
+        if cfg!(debug_assertions) {
+            if ctx.input_state.a && ctx.input_state.s && ctx.input_state.d {
+                if let Ok(to) = Self::new(&mut ctx) {
+                    return State::MainToMain(super::main_to_main::MainToMain {
+                        from: self,
+                        to,
+                        time: std::time::Duration::from_secs_f32(3.),
+                        elapsed: Default::default(),
+                    });
+                }
+            }
+        }
+
+        State::Main(self)
     }
 
     pub fn render(&mut self, ctx: StateContext) {
