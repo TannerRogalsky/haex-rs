@@ -6,8 +6,7 @@ mod state;
 pub mod web;
 
 #[cfg(not(target_arch = "wasm32"))]
-use glutin::event::{ElementState, MouseButton, VirtualKeyCode};
-#[cfg(target_arch = "wasm32")]
+use glutin as winit;
 use winit::event::{ElementState, MouseButton, VirtualKeyCode};
 
 pub enum MouseEvent {
