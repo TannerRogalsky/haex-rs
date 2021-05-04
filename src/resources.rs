@@ -140,8 +140,7 @@ pub struct Shaders {
 
 impl Shaders {
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut solstice_2d::Shader> + '_ {
-        use std::iter::once;
-        once(&mut self.aesthetic).chain(once(&mut self.menu))
+        std::array::IntoIter::new([&mut self.aesthetic, &mut self.menu])
     }
 }
 
