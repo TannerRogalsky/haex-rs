@@ -98,8 +98,7 @@ impl Game {
         }
 
         self.game_state
-            .as_mut()
-            .unwrap()
+            .get_or_insert_with(state::State::new)
             .render(self.shared.as_ctx());
     }
 
@@ -117,8 +116,7 @@ impl Game {
         };
 
         self.game_state
-            .as_mut()
-            .unwrap()
+            .get_or_insert_with(state::State::new)
             .handle_key_event(self.shared.as_ctx(), state, key_code);
     }
 
@@ -138,8 +136,7 @@ impl Game {
         }
 
         self.game_state
-            .as_mut()
-            .unwrap()
+            .get_or_insert_with(state::State::new)
             .handle_mouse_event(self.shared.as_ctx(), event);
     }
 
