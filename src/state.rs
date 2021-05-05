@@ -18,14 +18,15 @@ pub struct Map {
 }
 
 impl Map {
-    pub fn new(
+    pub fn with_seed(
         width: usize,
         height: usize,
+        seed: u64,
         ctx: &mut StateContext,
     ) -> Result<Self, solstice_2d::GraphicsError> {
         let mut rng = {
             use rand::SeedableRng;
-            rand::rngs::SmallRng::seed_from_u64(2)
+            rand::rngs::SmallRng::seed_from_u64(seed)
         };
 
         Self::gen(width, height, ctx, &mut rng)

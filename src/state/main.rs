@@ -8,7 +8,14 @@ pub struct Main {
 
 impl Main {
     pub fn new(ctx: &mut StateContext) -> Result<Self, solstice_2d::GraphicsError> {
-        let map = Map::new(10, 10, ctx)?;
+        Self::with_seed(ctx, 0)
+    }
+
+    pub fn with_seed(
+        ctx: &mut StateContext,
+        seed: u64,
+    ) -> Result<Self, solstice_2d::GraphicsError> {
+        let map = Map::with_seed(10, 10, seed, ctx)?;
 
         let player = {
             let start = map.map.path()[0];
@@ -46,7 +53,8 @@ impl Main {
 
         if cfg!(debug_assertions) {
             if ctx.input_state.a && ctx.input_state.s && ctx.input_state.d {
-                if let Ok(to) = Self::new(&mut ctx) {
+                let seed = ctx.time.as_millis() as u64;
+                if let Ok(to) = Self::with_seed(&mut ctx, seed) {
                     return State::MainToMain(super::main_to_main::MainToMain {
                         from: self,
                         to,
