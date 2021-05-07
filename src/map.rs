@@ -256,6 +256,14 @@ impl Grid {
         coord.0 + coord.1 * self.width
     }
 
+    fn checked_coord_to_index(&self, coord: Coord) -> Option<usize> {
+        if coord.0 < self.width && coord.1 < self.height {
+            Some(self.coord_to_index(coord))
+        } else {
+            None
+        }
+    }
+
     fn index_to_coord(&self, index: usize) -> Coord {
         (index % self.width, index / self.width)
     }
@@ -296,6 +304,27 @@ fn dead_ends(graph: &Graph) -> impl Iterator<Item = Coord> + '_ {
             None
         }
     })
+}
+
+pub fn neighbor_coord(
+    from: Coord,
+    direction: Direction,
+) -> Result<Coord, std::num::TryFromIntError> {
+    neighbor_coord_mult(from, direction, 1)
+}
+
+pub fn neighbor_coord_mult(
+    from: Coord,
+    direction: Direction,
+    mult: i32,
+) -> Result<Coord, std::num::TryFromIntError> {
+    use std::convert::TryInto;
+    let (dx, dy) = direction.into_dir();
+    let (x, y) = (from.0 as i32, from.1 as i32);
+    let (nx, ny) = (x + dx as i32 * mult, y + dy as i32 * mult);
+    let nx = nx.try_into()?;
+    let ny = ny.try_into()?;
+    Ok((nx, ny))
 }
 
 type Graph = petgraph::graphmap::UnGraphMap<Coord, ()>;
@@ -343,8 +372,30 @@ impl Map {
         }
     }
 
+    pub fn contains(&self, coord: Coord) -> bool {
+        let (x, y) = coord;
+        x < self.grid.width && y < self.grid.height
+    }
+
     pub fn path(&self) -> &[Coord] {
         &self.longest_path
+    }
+
+    pub fn make_open(&mut self, from: Coord, direction: Direction) {
+        let cell = self
+            .grid
+            .checked_coord_to_index(from)
+            .and_then(|index| self.grid.data.get_mut(index));
+        if let Some(cell) = cell {
+            *cell |= direction;
+        }
+        let neighbor = neighbor_coord(from, direction)
+            .ok()
+            .and_then(|coord| self.grid.checked_coord_to_index(coord))
+            .and_then(|index| self.grid.data.get_mut(index));
+        if let Some(cell) = neighbor {
+            *cell |= direction.opposite();
+        }
     }
 
     pub fn valid_move(&self, start: Coord, direction: Direction) -> Option<Coord> {
@@ -565,5 +616,41 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn neighbor_test() {
+        let origin = (5, 4);
+        assert_eq!(neighbor_coord(origin, Direction::N), Ok((5, 3)));
+
+        assert_eq!(neighbor_coord_mult(origin, Direction::N, 2), Ok((5, 2)));
+        assert_eq!(neighbor_coord_mult(origin, Direction::N, 3), Ok((5, 1)));
+        assert_eq!(neighbor_coord_mult(origin, Direction::N, 4), Ok((5, 0)));
+        assert!(neighbor_coord_mult(origin, Direction::N, 5).is_err());
+    }
+
+    #[test]
+    fn make_open_test() {
+        let (width, height) = (2, 2);
+        let data = vec![BitFlags::empty(); width * height];
+        let mut map = Map {
+            grid: Grid {
+                data: data.into_boxed_slice(),
+                width,
+                height,
+            },
+            graph: Default::default(),
+            longest_path: vec![],
+        };
+
+        let from = (0, 0);
+        let to = (0, 1);
+        map.make_open(from, Direction::S);
+        assert_eq!(map.grid.data[map.grid.coord_to_index(from)], Direction::S);
+        assert_eq!(map.grid.data[map.grid.coord_to_index(to)], Direction::N);
+
+        map.make_open((1, 0), Direction::E);
+        assert_eq!(map.grid.data[map.grid.coord_to_index((1, 0))], Direction::E);
+        assert_ne!(map.grid.data[map.grid.coord_to_index((0, 1))], Direction::W);
     }
 }

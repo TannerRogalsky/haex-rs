@@ -1,5 +1,7 @@
+mod cron;
 mod map;
 mod player;
+mod programs;
 pub mod resources;
 mod state;
 #[cfg(target_arch = "wasm32")]
@@ -20,6 +22,8 @@ pub struct InputState {
     a: bool,
     s: bool,
     d: bool,
+    space: bool,
+    ctrl: bool,
     prev_mouse_position: (f32, f32),
     mouse_position: (f32, f32),
 }
@@ -34,22 +38,36 @@ struct Static {
 }
 
 impl Static {
-    pub fn as_ctx(&mut self) -> state::StateContext {
+    pub fn as_ctx<'a>(
+        &'a mut self,
+        cron: &'a mut cron::Cron<CronContext>,
+    ) -> state::StateContext<'a> {
         state::StateContext {
             resources: &self.resources,
             ctx: &mut self.ctx,
             gfx: &mut self.gfx,
             canvas: &self.canvas,
             input_state: &self.input_state,
+            cron,
             time: self.time,
         }
     }
 }
 
-pub struct Game {
+pub struct CronContext {
     shared: Static,
     game_state: Option<state::State>,
-    cron: cron::Cron<()>,
+}
+
+impl CronContext {
+    pub fn game_state_mut(&mut self) -> &mut state::State {
+        self.game_state.get_or_insert_with(state::State::new)
+    }
+}
+
+pub struct Game {
+    cron_ctx: CronContext,
+    cron: cron::Cron<CronContext>,
 }
 
 impl Game {
@@ -68,63 +86,70 @@ impl Game {
         let cron = cron::Cron::default();
 
         Ok(Self {
-            shared: Static {
-                ctx,
-                gfx,
-                resources,
-                canvas,
-                input_state: Default::default(),
-                time,
+            cron_ctx: CronContext {
+                shared: Static {
+                    ctx,
+                    gfx,
+                    resources,
+                    canvas,
+                    input_state: Default::default(),
+                    time,
+                },
+                game_state: Some(state::State::new()),
             },
             cron,
-            game_state: Some(state::State::new()),
         })
     }
 
     pub fn update(&mut self, time: std::time::Duration) {
-        let dt = time - self.shared.time;
-        for callback in self.cron.update(dt) {
-            (callback)(&mut ())
-        }
-        self.shared.time = time;
+        let dt = time - self.cron_ctx.shared.time;
+        self.cron_ctx.shared.time = time;
 
-        self.game_state = self
+        self.cron.update(dt, &mut self.cron_ctx);
+
+        self.cron_ctx.game_state = self
+            .cron_ctx
             .game_state
             .take()
-            .map(|state| state.update(dt, self.shared.as_ctx()));
+            .map(|state| state.update(dt, self.cron_ctx.shared.as_ctx(&mut self.cron)));
 
-        for shader in self.shared.resources.shaders.iter_mut() {
-            shader.send_uniform("elapsed", self.shared.time.as_secs_f32());
+        let ctx = &mut self.cron_ctx;
+        for shader in ctx.shared.resources.shaders.iter_mut() {
+            shader.send_uniform("elapsed", ctx.shared.time.as_secs_f32());
         }
 
-        self.game_state
+        ctx.game_state
             .get_or_insert_with(state::State::new)
-            .render(self.shared.as_ctx());
+            .render(ctx.shared.as_ctx(&mut self.cron));
     }
 
     pub fn handle_key_event(&mut self, state: ElementState, key_code: VirtualKeyCode) {
+        let ctx = &mut self.cron_ctx;
+
         let pressed = match state {
             ElementState::Pressed => true,
             ElementState::Released => false,
         };
         match key_code {
-            VirtualKeyCode::W => self.shared.input_state.w = pressed,
-            VirtualKeyCode::A => self.shared.input_state.a = pressed,
-            VirtualKeyCode::S => self.shared.input_state.s = pressed,
-            VirtualKeyCode::D => self.shared.input_state.d = pressed,
+            VirtualKeyCode::W => ctx.shared.input_state.w = pressed,
+            VirtualKeyCode::A => ctx.shared.input_state.a = pressed,
+            VirtualKeyCode::S => ctx.shared.input_state.s = pressed,
+            VirtualKeyCode::D => ctx.shared.input_state.d = pressed,
+            VirtualKeyCode::Space => ctx.shared.input_state.space = pressed,
+            VirtualKeyCode::LControl => ctx.shared.input_state.ctrl = pressed,
             _ => {}
         };
 
-        self.game_state
+        ctx.game_state
             .get_or_insert_with(state::State::new)
-            .handle_key_event(self.shared.as_ctx(), state, key_code);
+            .handle_key_event(ctx.shared.as_ctx(&mut self.cron), state, key_code);
     }
 
     pub fn handle_mouse_event(&mut self, event: MouseEvent) {
         match event {
             MouseEvent::Button(_, _) => {}
             MouseEvent::Moved(x, y) => {
-                let mut is = &mut self.shared.input_state;
+                let mut is = &mut self.cron_ctx.shared.input_state;
                 if is.mouse_position == is.prev_mouse_position && is.mouse_position == (0., 0.) {
                     is.prev_mouse_position = (x, y);
                     is.mouse_position = (x, y);
@@ -135,103 +160,17 @@ impl Game {
             }
         }
 
-        self.game_state
+        self.cron_ctx
+            .game_state
             .get_or_insert_with(state::State::new)
-            .handle_mouse_event(self.shared.as_ctx(), event);
+            .handle_mouse_event(self.cron_ctx.shared.as_ctx(&mut self.cron), event);
     }
 
     pub fn handle_resize(&mut self, width: f32, height: f32) {
-        self.shared.ctx.set_viewport(0, 0, width as _, height as _);
-        self.shared.gfx.set_width_height(width, height);
-    }
-}
-
-mod cron {
-    struct Every<T> {
-        t: std::time::Duration,
-        running: std::time::Duration,
-        callback: Box<dyn FnMut(&mut T)>,
-    }
-
-    struct After<T> {
-        triggered: bool,
-        t: std::time::Duration,
-        running: std::time::Duration,
-        callback: Box<dyn FnMut(&mut T)>,
-    }
-
-    pub struct Cron<T> {
-        t: std::time::Duration,
-        every_callbacks: Vec<Every<T>>,
-        after_callbacks: Vec<After<T>>,
-    }
-
-    impl<T> std::default::Default for Cron<T> {
-        fn default() -> Self {
-            Self {
-                t: Default::default(),
-                every_callbacks: vec![],
-                after_callbacks: vec![],
-            }
-        }
-    }
-
-    impl<T> Cron<T> {
-        #[allow(unused)]
-        pub fn every<F>(&mut self, t: std::time::Duration, callback: F)
-        where
-            F: FnMut(&mut T) + 'static,
-        {
-            self.every_callbacks.push(Every {
-                t,
-                running: Default::default(),
-                callback: Box::new(callback),
-            });
-        }
-
-        #[allow(unused)]
-        pub fn after<F>(&mut self, t: std::time::Duration, callback: F)
-        where
-            F: FnMut(&mut T) + 'static,
-        {
-            self.after_callbacks.push(After {
-                triggered: false,
-                t,
-                running: Default::default(),
-                callback: Box::new(callback),
-            });
-        }
-
-        pub fn update(
-            &mut self,
-            dt: std::time::Duration,
-        ) -> impl Iterator<Item = &mut (dyn FnMut(&mut T) + 'static)> + '_ {
-            self.t += dt;
-
-            self.every_callbacks
-                .iter_mut()
-                .filter_map(move |every| {
-                    every.running += dt;
-                    if every.running >= every.t {
-                        every.running -= every.t;
-                        Some(&mut *every.callback)
-                    } else {
-                        None
-                    }
-                })
-                .chain(self.after_callbacks.iter_mut().filter_map(move |after| {
-                    if after.triggered {
-                        None
-                    } else {
-                        after.running += dt;
-                        if after.running >= after.t {
-                            after.triggered = true;
-                            Some(&mut *after.callback)
-                        } else {
-                            None
-                        }
-                    }
-                }))
-        }
+        self.cron_ctx
+            .shared
+            .ctx
+            .set_viewport(0, 0, width as _, height as _);
+        self.cron_ctx.shared.gfx.set_width_height(width, height);
     }
 }

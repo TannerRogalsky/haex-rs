@@ -4,6 +4,7 @@ use solstice_2d::{Color, Draw};
 pub struct Main {
     pub map: Map,
     pub player: crate::player::Player,
+    nop_slide: Option<crate::cron::ID>,
 }
 
 impl Main {
@@ -23,7 +24,11 @@ impl Main {
             crate::player::Player::new(x, y)
         };
 
-        Ok(Self { map, player })
+        Ok(Self {
+            map,
+            player,
+            nop_slide: None,
+        })
     }
 
     pub fn update(mut self, dt: std::time::Duration, mut ctx: StateContext) -> State {
@@ -51,7 +56,35 @@ impl Main {
 
         self.player.update(dt);
 
+        {
+            // player is at exit
+            let grid_pos = self.map.pixel_to_coord(self.player.position());
+            if let Some(target) = self.map.map.path().last().copied() {
+                if grid_pos == target {
+                    let seed = ctx.time.as_millis() as u64;
+                    if let Ok(to) = Self::with_seed(&mut ctx, seed) {
+                        return State::MainToMain(super::main_to_main::MainToMain {
+                            from: self,
+                            to,
+                            time: std::time::Duration::from_secs_f32(3.),
+                            elapsed: Default::default(),
+                        });
+                    }
+                }
+            }
+        }
+
         if cfg!(debug_assertions) {
+            if ctx.input_state.ctrl && self.nop_slide.is_none() {
+                let state = crate::programs::StateMut {
+                    ctx: &mut ctx,
+                    player: &mut self.player,
+                    map: &mut self.map,
+                };
+                let r = crate::programs::NopSlide::new(state);
+                self.nop_slide = Some(r.callback);
+            }
+
             if ctx.input_state.a && ctx.input_state.s && ctx.input_state.d {
                 let seed = ctx.time.as_millis() as u64;
                 if let Ok(to) = Self::with_seed(&mut ctx, seed) {
@@ -130,30 +163,5 @@ impl Main {
                 ctx.canvas,
             );
         }
-
-        // {
-        //     let fovy = std::f32::consts::FRAC_PI_2;
-        //     let aspect = viewport.width() as f32 / viewport.height() as f32;
-        //     g.set_projection_mode(Some(solstice_2d::Projection::Perspective(Some(
-        //         solstice_2d::Perspective {
-        //             aspect,
-        //             fovy,
-        //             near: 0.1,
-        //             far: 1000.0,
-        //         },
-        //     ))));
-        //
-        //     let d = 1.;
-        //     let dist = d / 2. / fovy.tan();
-        //
-        //     let geometry = solstice_2d::Box::new(d, d, d, 1, 1, 1);
-        //     let tx = solstice_2d::Transform3D::translation(0., 0., dist - d);
-        //     // let pitch = solstice_2d::Rad(self.time.as_secs_f32());
-        //     // let zero = solstice_2d::Rad(0.);
-        //     // let tx = tx * solstice_2d::Transform3D::rotation(zero, pitch, zero);
-        //
-        //     g.image_with_transform(geometry, self.canvas.clone(), tx);
-        //     g.set_projection_mode(None);
-        // }
     }
 }
