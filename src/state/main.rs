@@ -1,22 +1,29 @@
 use super::{Map, State, StateContext};
 use solstice_2d::{Color, Draw};
+use crate::ProgressionType;
 
 pub struct Main {
     pub map: Map,
     pub player: crate::player::Player,
     nop_slide: Option<crate::cron::ID>,
+    progression: crate::MapProgression,
 }
 
 impl Main {
-    pub fn new(ctx: &mut StateContext) -> Result<Self, solstice_2d::GraphicsError> {
-        Self::with_seed(ctx, 0)
+    pub fn new(
+        ctx: &mut StateContext,
+        settings: crate::MapProgression,
+    ) -> Result<Self, solstice_2d::GraphicsError> {
+        Self::with_seed(ctx, 0, settings)
     }
 
     pub fn with_seed(
         ctx: &mut StateContext,
         seed: u64,
+        settings: crate::MapProgression,
     ) -> Result<Self, solstice_2d::GraphicsError> {
-        let map = Map::with_seed(10, 10, seed, ctx)?;
+        let crate::map::MapGenSettings { width, height, .. } = settings.settings;
+        let map = Map::with_seed(width, height, seed, ctx)?;
 
         let player = {
             let start = map.map.path()[0];
@@ -28,6 +35,7 @@ impl Main {
             map,
             player,
             nop_slide: None,
+            progression: settings,
         })
     }
 
@@ -62,13 +70,20 @@ impl Main {
             if let Some(target) = self.map.map.path().last().copied() {
                 if grid_pos == target {
                     let seed = ctx.time.as_millis() as u64;
-                    if let Ok(to) = Self::with_seed(&mut ctx, seed) {
-                        return State::MainToMain(super::main_to_main::MainToMain {
-                            from: self,
-                            to,
-                            time: std::time::Duration::from_secs_f32(3.),
-                            elapsed: Default::default(),
-                        });
+                    if let Some(progression) = &self.progression.exit {
+                        match progression {
+                            ProgressionType::Standard(settings) => {
+                                if let Ok(to) = Self::with_seed(&mut ctx, seed, (**settings).clone()) {
+                                    return State::MainToMain(super::main_to_main::MainToMain {
+                                        from: self,
+                                        to,
+                                        time: std::time::Duration::from_secs_f32(3.),
+                                        elapsed: Default::default(),
+                                    });
+                                }
+                            }
+                            ProgressionType::BadEnding => unimplemented!()
+                        }
                     }
                 }
             }
@@ -83,18 +98,6 @@ impl Main {
                 };
                 let r = crate::programs::NopSlide::new(state);
                 self.nop_slide = Some(r.callback);
-            }
-
-            if ctx.input_state.a && ctx.input_state.s && ctx.input_state.d {
-                let seed = ctx.time.as_millis() as u64;
-                if let Ok(to) = Self::with_seed(&mut ctx, seed) {
-                    return State::MainToMain(super::main_to_main::MainToMain {
-                        from: self,
-                        to,
-                        time: std::time::Duration::from_secs_f32(3.),
-                        elapsed: Default::default(),
-                    });
-                }
             }
         }
 

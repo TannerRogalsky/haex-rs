@@ -28,12 +28,25 @@ pub struct InputState {
     mouse_position: (f32, f32),
 }
 
+#[derive(Clone)]
+pub enum ProgressionType {
+    Standard(Box<MapProgression>),
+    BadEnding,
+}
+
+#[derive(Clone)]
+pub struct MapProgression {
+    settings: map::MapGenSettings,
+    exit: Option<ProgressionType>,
+}
+
 struct Static {
     ctx: solstice_2d::solstice::Context,
     gfx: solstice_2d::Graphics,
     resources: resources::LoadedResources,
     canvas: solstice_2d::Canvas,
     input_state: InputState,
+    maps: MapProgression,
     time: std::time::Duration,
 }
 
@@ -49,6 +62,7 @@ impl Static {
             canvas: &self.canvas,
             input_state: &self.input_state,
             cron,
+            maps: &self.maps,
             time: self.time,
         }
     }
@@ -85,6 +99,29 @@ impl Game {
 
         let cron = cron::Cron::default();
 
+        let maps = MapProgression {
+            settings: map::MapGenSettings {
+                width: 5,
+                height: 5,
+                programs: map::ProgramGenSettings { nop_slide_count: 0 },
+            },
+            exit: Some(ProgressionType::Standard(Box::new(MapProgression {
+                settings: map::MapGenSettings {
+                    width: 7,
+                    height: 7,
+                    programs: map::ProgramGenSettings { nop_slide_count: 0 },
+                },
+                exit: Some(ProgressionType::Standard(Box::new(MapProgression {
+                    settings: map::MapGenSettings {
+                        width: 10,
+                        height: 10,
+                        programs: map::ProgramGenSettings { nop_slide_count: 0 },
+                    },
+                    exit: Some(ProgressionType::BadEnding),
+                }))),
+            }))),
+        };
+
         Ok(Self {
             cron_ctx: CronContext {
                 shared: Static {
@@ -93,6 +130,7 @@ impl Game {
                     resources,
                     canvas,
                     input_state: Default::default(),
+                    maps,
                     time,
                 },
                 game_state: Some(state::State::new()),

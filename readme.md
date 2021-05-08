@@ -1,5 +1,13 @@
 # HAEX
 
+## Progression
+- 3 procedural but straightforward maps
+	- essentially tutorialized introduce concepts
+	- bad ending
+- primary sequence has an "escape hatch"
+	- maybe based on a particular use of items
+	- breaks into a secondary set of levels that eschew the established rules
+
 ## Programs
 How do these fit into the theme of "Breaking the Code".
 

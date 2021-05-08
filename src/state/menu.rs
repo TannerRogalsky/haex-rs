@@ -71,7 +71,8 @@ impl Menu {
         _state: crate::ElementState,
         _key_code: crate::VirtualKeyCode,
     ) -> Option<State> {
-        let main = super::main::Main::new(&mut ctx).ok()?;
+        let settings = ctx.maps.clone();
+        let main = super::main::Main::new(&mut ctx, settings).ok()?;
         Some(State::Main(main))
     }
 

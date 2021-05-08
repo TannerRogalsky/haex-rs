@@ -9,6 +9,7 @@ pub struct StateContext<'a> {
     pub canvas: &'a solstice_2d::Canvas,
     pub input_state: &'a crate::InputState,
     pub cron: &'a mut crate::cron::Cron<crate::CronContext>,
+    pub maps: &'a crate::MapProgression,
     pub time: std::time::Duration,
 }
 
