@@ -401,17 +401,9 @@ impl Map {
     pub fn valid_move(&self, start: Coord, direction: Direction) -> Option<Coord> {
         let v = self.grid.data.get(self.grid.coord_to_index(start))?;
         if v.contains(direction) {
-            let (dx, dy) = direction.into_dir();
-            let nx = start.0 as i32 + dx as i32;
-            let ny = start.1 as i32 + dy as i32;
-            if nx >= 0 && ny >= 0 {
-                let coord = (nx as usize, ny as usize);
-                let target = self.grid.coord_to_index(coord);
-                if target < self.grid.data.len() {
-                    Some(coord)
-                } else {
-                    None
-                }
+            let end = neighbor_coord(start, direction).ok()?;
+            if self.grid.checked_coord_to_index(end).is_some() {
+                Some(end)
             } else {
                 None
             }
