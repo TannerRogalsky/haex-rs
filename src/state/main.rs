@@ -1,6 +1,6 @@
 use super::{Map, State, StateContext};
-use solstice_2d::{Color, Draw};
 use crate::ProgressionType;
+use solstice_2d::{Color, Draw};
 
 pub struct Main {
     pub map: Map,
@@ -73,7 +73,9 @@ impl Main {
                     if let Some(progression) = &self.progression.exit {
                         match progression {
                             ProgressionType::Standard(settings) => {
-                                if let Ok(to) = Self::with_seed(&mut ctx, seed, (**settings).clone()) {
+                                if let Ok(to) =
+                                    Self::with_seed(&mut ctx, seed, (**settings).clone())
+                                {
                                     return State::MainToMain(super::main_to_main::MainToMain {
                                         from: self,
                                         to,
@@ -82,7 +84,7 @@ impl Main {
                                     });
                                 }
                             }
-                            ProgressionType::BadEnding => unimplemented!()
+                            ProgressionType::BadEnding => unimplemented!(),
                         }
                     }
                 }

@@ -4,6 +4,14 @@ version = "0.1.0"
 authors = ["Tanner Rogalsky <tanner@tannerrogalsky.com>"]
 edition = "2018"
 
+[profile.release]
+lto = "fat"         # turn on Link-Time Optimizations
+codegen-units = 1   # trade compile time with maximum optimization
+opt-level = "z"     # optimize for size
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ["-Oz", "--enable-mutable-globals"]
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 
@@ -13,16 +21,16 @@ solstice-2d = { path = "../solstice/solstice-2d" }
 eyre = "0.6"
 serde = { version = "1.0", features = ["derive"] }
 vec_mut_scan = "0.4"
+serde_json = "1.0"
 
 enumflags2 = "0.7"
 rand = { version = "0.8", default-features = false, features = ["small_rng"] }
-rand_distr = "0.4"
+rand_distr = { version = "0.4", default-features = false, features = ["alloc"] }
 petgraph = "0.5"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 glutin = "0.26"
 image = "0.23"
-serde_json = "1.0"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 winit = { version = "0.24", default-features = false, features = ["web-sys"] }

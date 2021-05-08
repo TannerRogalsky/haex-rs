@@ -60,8 +60,14 @@ pub struct SpriteSheet {
     meta: SpriteSheetMetadata,
 }
 
+pub enum ImageDataRepr {
+    Bytes(Vec<u8>),
+    #[cfg(target_arch = "wasm32")]
+    ImageElement(web_sys::HtmlImageElement),
+}
+
 pub struct ImageData {
-    pub data: Vec<u8>,
+    pub data: ImageDataRepr,
     pub width: u32,
     pub height: u32,
     pub format: solstice::PixelFormat,
@@ -79,19 +85,36 @@ impl ImageData {
             height,
             format,
         } = self;
-        Ok(Image::with_data(
-            ctx,
-            TextureType::Tex2D,
-            format,
-            width,
-            height,
-            &data,
-            Settings {
-                mipmaps: false,
-                wrap: solstice::texture::WrapMode::Repeat.into(),
-                ..Default::default()
-            },
-        )?)
+        let img = match data {
+            ImageDataRepr::Bytes(data) => Image::with_data(
+                ctx,
+                TextureType::Tex2D,
+                format,
+                width,
+                height,
+                &data,
+                Settings {
+                    mipmaps: false,
+                    wrap: solstice::texture::WrapMode::Repeat.into(),
+                    ..Default::default()
+                },
+            )?,
+            #[cfg(target_arch = "wasm32")]
+            ImageDataRepr::ImageElement(data) => Image::with_html_image(
+                ctx,
+                TextureType::Tex2D,
+                format,
+                width,
+                height,
+                &data,
+                Settings {
+                    mipmaps: false,
+                    wrap: solstice::texture::WrapMode::Repeat.into(),
+                    ..Default::default()
+                },
+            )?,
+        };
+        Ok(img)
     }
 }
 

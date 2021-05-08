@@ -85,13 +85,13 @@ fn image<P: AsRef<std::path::Path>>(path: P) -> eyre::Result<resources::ImageDat
             width: image.width(),
             height: image.height(),
             format: solstice_2d::solstice::PixelFormat::RGB8,
-            data: image.into_raw(),
+            data: resources::ImageDataRepr::Bytes(image.into_raw()),
         }),
         DynamicImage::ImageRgba8(image) => Ok(resources::ImageData {
             width: image.width(),
             height: image.height(),
             format: solstice_2d::solstice::PixelFormat::RGBA8,
-            data: image.into_raw(),
+            data: resources::ImageDataRepr::Bytes(image.into_raw()),
         }),
         _ => Err(eyre::Report::msg("Unsupported image format.")),
     }
