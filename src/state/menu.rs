@@ -1,4 +1,6 @@
 use super::{State, StateContext};
+use crate::winit::event::{ElementState, MouseButton};
+use crate::MouseEvent;
 use solstice_2d::{solstice, Color, Draw};
 
 pub struct Menu;
@@ -76,7 +78,24 @@ impl Menu {
         Some(State::Main(main))
     }
 
-    pub fn handle_mouse_event(&mut self, _event: crate::MouseEvent) -> Option<State> {
+    pub fn handle_mouse_event(
+        &mut self,
+        ctx: StateContext,
+        event: crate::MouseEvent,
+    ) -> Option<State> {
+        match event {
+            MouseEvent::Button(state, button) => {
+                if state == ElementState::Pressed {
+                    match button {
+                        MouseButton::Left => {
+                            let _r = ctx.audio_ctx.play_new(ctx.resources.music.clone());
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            MouseEvent::Moved(_, _) => {}
+        }
         // Some(State::Main)
         None
     }

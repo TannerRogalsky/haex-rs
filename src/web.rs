@@ -5,6 +5,16 @@ fn into_js_value<E: std::fmt::Display>(err: E) -> JsValue {
     JsValue::from_str(&format!("{}", err))
 }
 
+#[wasm_bindgen(start)]
+pub fn js_main() {
+    #[cfg(debug_assertions)]
+    let level = log::Level::Debug;
+    #[cfg(not(debug_assertions))]
+    let level = log::Level::Error;
+    wasm_logger::init(wasm_logger::Config::new(level));
+    std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+}
+
 #[wasm_bindgen]
 pub enum KeyEvent {
     W,
@@ -35,6 +45,7 @@ pub struct ResourcesWrapper {
     sprites_metadata: Option<SpriteSheet>,
     aesthetic_shader_src: Option<String>,
     menu_shader_src: Option<String>,
+    music: Option<web_sys::HtmlMediaElement>,
 }
 
 #[wasm_bindgen]
@@ -48,6 +59,7 @@ impl ResourcesWrapper {
             sprites_metadata: None,
             aesthetic_shader_src: None,
             menu_shader_src: None,
+            music: None,
         }
     }
 
@@ -75,6 +87,10 @@ impl ResourcesWrapper {
 
     pub fn set_menu_shader(&mut self, src: String) {
         self.menu_shader_src = Some(src);
+    }
+
+    pub fn set_music(&mut self, source: web_sys::HtmlMediaElement) {
+        self.music = Some(source);
     }
 
     fn set_image(field: &mut Option<ImageData>, image: web_sys::HtmlImageElement) {
@@ -124,19 +140,24 @@ impl Wrapper {
                 .ok_or(JsValue::from_str("missing font data"))?,
             sprites_data: resources
                 .sprites_data
-                .ok_or(JsValue::from_str("missing font data"))?,
+                .ok_or(JsValue::from_str("missing sprites data"))?,
             noise_data: resources
                 .noise_data
-                .ok_or(JsValue::from_str("missing font data"))?,
+                .ok_or(JsValue::from_str("missing noise data"))?,
             sprites_metadata: resources
                 .sprites_metadata
-                .ok_or(JsValue::from_str("missing font data"))?,
+                .ok_or(JsValue::from_str("missing sprites metadata"))?,
             aesthetic_shader_src: resources
                 .aesthetic_shader_src
-                .ok_or(JsValue::from_str("missing font data"))?,
+                .ok_or(JsValue::from_str("missing aesthetic shader source"))?,
             menu_shader_src: resources
                 .menu_shader_src
-                .ok_or(JsValue::from_str("missing font data"))?,
+                .ok_or(JsValue::from_str("missing menu shader source"))?,
+            music: crate::audio::StreamingAudioSource::from_element(
+                resources
+                    .music
+                    .ok_or(JsValue::from_str("missing music data"))?,
+            ),
         };
 
         let time = duration_from_f64(time_ms);

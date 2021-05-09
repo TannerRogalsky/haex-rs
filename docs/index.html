@@ -24,6 +24,9 @@
 		let sprites_metadata_promise = fetch('./images/sprites.json').then(r => r.arrayBuffer());
 		let aesthetic_promise = fetch('./shaders/aesthetic.glsl').then(r => r.text());
 		let menu_promise = fetch('./shaders/menu.glsl').then(r => r.text());
+		let music = document.createElement('audio');
+		music.preload = 'auto';
+		music.src = './sounds/music.ogg';
 
 		async function run() {
 			await init();
@@ -54,27 +57,29 @@
 
 			canvas.addEventListener('keydown', (event) => {
 				let key_code = keyToCode(event.key);
-				if (key_code !== undefined) {
+				if (key_code !== undefined && game) {
 					game.handle_key_down(key_code);
 				}
 			});
 
 			canvas.addEventListener('keyup', (event) => {
 				let key_code = keyToCode(event.key);
-				if (key_code !== undefined) {
+				if (key_code !== undefined && game) {
 					game.handle_key_up(key_code);
 				}
 			});
 
 			canvas.addEventListener('mousedown', (event) => {
 				let button = isLeft(event.button);
-				if (button !== undefined) {
+				if (button !== undefined && game) {
 					game.handle_mouse_down(button);
 				}
 			});
 
 			canvas.addEventListener('mousemove', (event) => {
-				game.handle_mouse_move(event.offsetX, event.offsetY);
+				if (game) {
+					game.handle_mouse_move(event.offsetX, event.offsetY);
+				}
 			});
 
 			canvas.oncontextmenu = (event) => {
@@ -94,18 +99,11 @@
 				if (document.fullscreenElement !== canvas) {
 					canvas.width = 1280;
 					canvas.height = 720;
-					game.handle_resize();
+					if (game) {
+						game.handle_resize();
+					}
 				}
-			})
-
-
-			let resizeObserver = new ResizeObserver((entries) => {
-				canvas.width = canvas.clientWidth;
-				canvas.height = canvas.clientHeight;
-				game.handle_resize();
 			});
-			resizeObserver.observe(canvas);
-
 
 			let font_data = new Uint8Array (await font_data_promise);
 			let sprites_metadata = new Uint8Array(await sprites_metadata_promise);
@@ -119,9 +117,17 @@
 			resources.set_noise(noise);
 			resources.set_aesthetic_shader(await aesthetic_promise);
 			resources.set_menu_shader(await menu_promise);
+			resources.set_music(music);
 
 			let time = performance.now();
 			let game = new Wrapper(canvas, time, resources);
+
+			let resizeObserver = new ResizeObserver((entries) => {
+				canvas.width = canvas.clientWidth;
+				canvas.height = canvas.clientHeight;
+					game.handle_resize();
+			});
+			resizeObserver.observe(canvas);
 
 			let loop = () => {
 				game.step(performance.now());

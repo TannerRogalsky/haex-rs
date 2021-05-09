@@ -125,6 +125,7 @@ pub struct Resources {
     pub sprites_metadata: SpriteSheet,
     pub aesthetic_shader_src: String,
     pub menu_shader_src: String,
+    pub music: crate::audio::StreamingAudioSource,
 }
 
 impl Resources {
@@ -152,6 +153,7 @@ impl Resources {
                 aesthetic: solstice_2d::Shader::with(&self.aesthetic_shader_src, ctx)?,
                 menu: solstice_2d::Shader::with(&self.menu_shader_src, ctx)?,
             },
+            music: self.music,
         })
     }
 }
@@ -173,4 +175,5 @@ pub struct LoadedResources {
     pub noise: solstice::image::Image,
     pub sprites_metadata: std::collections::HashMap<String, Quad<(f32, f32)>>,
     pub shaders: Shaders,
+    pub music: crate::audio::StreamingAudioSource,
 }

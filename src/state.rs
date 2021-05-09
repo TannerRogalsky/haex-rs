@@ -8,6 +8,7 @@ pub struct StateContext<'a> {
     pub gfx: &'a mut solstice_2d::Graphics,
     pub canvas: &'a solstice_2d::Canvas,
     pub input_state: &'a crate::InputState,
+    pub audio_ctx: &'a mut crate::audio::AudioContext,
     pub cron: &'a mut crate::cron::Cron<crate::CronContext>,
     pub maps: &'a crate::MapProgression,
     pub time: std::time::Duration,
@@ -102,10 +103,10 @@ impl State {
         }
     }
 
-    pub fn handle_mouse_event(&mut self, _ctx: StateContext, event: crate::MouseEvent) {
+    pub fn handle_mouse_event(&mut self, ctx: StateContext, event: crate::MouseEvent) {
         match self {
             State::Menu(inner) => {
-                if let Some(new_state) = inner.handle_mouse_event(event) {
+                if let Some(new_state) = inner.handle_mouse_event(ctx, event) {
                     *self = new_state;
                 }
             }

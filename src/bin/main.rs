@@ -16,6 +16,7 @@ fn main() -> eyre::Result<()> {
     let fonts_folder = resources_folder.join("fonts");
     let images_folder = resources_folder.join("images");
     let shaders_folder = resources_folder.join("shaders");
+    let sounds_folder = resources_folder.join("sounds");
     let resources = resources::Resources {
         debug_font_data: std::fs::read(fonts_folder.join("Inconsolata-Regular.ttf"))?,
         sprites_data: image(images_folder.join("sprites.png"))?,
@@ -25,6 +26,9 @@ fn main() -> eyre::Result<()> {
         )?)?,
         aesthetic_shader_src: std::fs::read_to_string(shaders_folder.join("aesthetic.glsl"))?,
         menu_shader_src: std::fs::read_to_string(shaders_folder.join("menu.glsl"))?,
+        music: audio::StreamingAudioSource::from_data(std::sync::Arc::new(std::fs::read(
+            sounds_folder.join("music.ogg"),
+        )?)),
     };
 
     let now = {

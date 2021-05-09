@@ -1,3 +1,4 @@
+pub mod audio;
 mod cron;
 mod map;
 mod player;
@@ -8,7 +9,10 @@ mod state;
 pub mod web;
 
 #[cfg(not(target_arch = "wasm32"))]
-use glutin as winit;
+pub use glutin as winit;
+#[cfg(target_arch = "wasm32")]
+pub use winit;
+
 use winit::event::{ElementState, MouseButton, VirtualKeyCode};
 
 pub enum MouseEvent {
@@ -46,6 +50,7 @@ struct Static {
     resources: resources::LoadedResources,
     canvas: solstice_2d::Canvas,
     input_state: InputState,
+    audio_ctx: audio::AudioContext,
     maps: MapProgression,
     time: std::time::Duration,
 }
@@ -61,6 +66,7 @@ impl Static {
             gfx: &mut self.gfx,
             canvas: &self.canvas,
             input_state: &self.input_state,
+            audio_ctx: &mut self.audio_ctx,
             cron,
             maps: &self.maps,
             time: self.time,
@@ -122,6 +128,8 @@ impl Game {
             }))),
         };
 
+        let audio_ctx = audio::AudioContext::new();
+
         Ok(Self {
             cron_ctx: CronContext {
                 shared: Static {
@@ -130,6 +138,7 @@ impl Game {
                     resources,
                     canvas,
                     input_state: Default::default(),
+                    audio_ctx,
                     maps,
                     time,
                 },
