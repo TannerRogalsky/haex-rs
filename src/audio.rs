@@ -47,7 +47,10 @@ mod web {
             node.connect_with_audio_node(&self.ctx.destination())
                 .unwrap();
             let _r = source.inner.play();
-            Ok(Sink { source, _node: node })
+            Ok(Sink {
+                source,
+                _node: node,
+            })
         }
 
         pub fn pause(&self, sink: &Sink) {
@@ -83,12 +86,14 @@ mod native {
         sender: std::sync::mpsc::Sender<Command>,
         _thread_handle: std::thread::JoinHandle<eyre::Result<()>>,
         sink_id: std::sync::atomic::AtomicUsize,
+        volume: f32,
     }
 
     enum Command {
         PlayNew(Sink, rodio::Decoder<CursorOverShared<Vec<u8>>>),
         Play(Sink),
         Pause(Sink),
+        SetGlobalVolume(f32),
     }
 
     pub type Sink = usize;
@@ -113,6 +118,11 @@ mod native {
                         Command::Play(id) => {
                             sinks.get(&id).map(rodio::Sink::play);
                         }
+                        Command::SetGlobalVolume(volume) => {
+                            for sink in sinks.values() {
+                                sink.set_volume(volume);
+                            }
+                        }
                     }
                 }
 
@@ -123,7 +133,18 @@ mod native {
                 sender: sx,
                 _thread_handle,
                 sink_id: Default::default(),
+                volume: 0.0,
             }
+        }
+
+        pub fn set_global_volume(&mut self, volume: f32) {
+            if self.sender.send(Command::SetGlobalVolume(volume)).is_ok() {
+                self.volume = volume;
+            }
+        }
+
+        pub fn global_volume(&self) -> f32 {
+            self.volume
         }
 
         pub fn play_new(&self, source: StreamingAudioSource) -> eyre::Result<Sink> {

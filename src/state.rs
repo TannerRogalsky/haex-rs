@@ -84,7 +84,7 @@ pub enum State {
 
 impl State {
     pub fn new() -> Self {
-        Self::Menu(menu::Menu)
+        Self::Menu(menu::Menu::new())
     }
 
     pub fn update(self, dt: std::time::Duration, ctx: StateContext) -> Self {
