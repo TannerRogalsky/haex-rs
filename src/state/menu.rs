@@ -58,7 +58,7 @@ impl Menu {
     pub fn new() -> Self {
         Self {
             volume_clicked: false,
-            music: None
+            music: None,
         }
     }
 
@@ -119,7 +119,7 @@ impl Menu {
             let interval = std::f32::consts::PI / segments as f32;
             let (x, y) = (256. / 2., 256. * 0.825);
             g.line_2d(
-                (0..segments)
+                (0..=segments)
                     .map(|index| {
                         let ratio = index as f32 / segments as f32;
                         let phi = interval * index as f32 + std::f32::consts::PI;
@@ -253,10 +253,10 @@ impl Menu {
     ) -> Option<State> {
         if state == crate::ElementState::Released {
             match key_code {
-                crate::VirtualKeyCode::Left
-                | crate::VirtualKeyCode::Right
-                | crate::VirtualKeyCode::Up
-                | crate::VirtualKeyCode::Down => {
+                crate::VirtualKeyCode::W
+                | crate::VirtualKeyCode::A
+                | crate::VirtualKeyCode::S
+                | crate::VirtualKeyCode::D => {
                     let settings = ctx.maps.clone();
                     let main = super::main::Main::new(&mut ctx, settings).ok()?;
                     Some(State::Main(main))
@@ -279,14 +279,17 @@ impl Menu {
                     match button {
                         MouseButton::Left => {
                             if self.music.is_none() {
-                                self.music = ctx.audio_ctx.play_new(ctx.resources.music.clone()).ok();
+                                self.music =
+                                    ctx.audio_ctx.play_new(ctx.resources.music.clone()).ok();
                                 ctx.audio_ctx.set_global_volume(0.);
                             }
                             let viewport = ctx.gfx.viewport();
-                            let mouse = Self::mouse_on_canvas(ctx.input_state.mouse_position, *viewport);
+                            let mouse =
+                                Self::mouse_on_canvas(ctx.input_state.mouse_position, *viewport);
                             let radius = 50.;
                             let volume = ctx.audio_ctx.global_volume();
-                            let vc = self.volume_collider(volume, radius, (256. / 2., 256. * 0.825));
+                            let vc =
+                                self.volume_collider(volume, radius, (256. / 2., 256. * 0.825));
                             if collides(mouse, &vc) {
                                 self.volume_clicked = true;
                             }

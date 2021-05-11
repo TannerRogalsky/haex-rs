@@ -25,27 +25,45 @@ mod web {
         _node: web_sys::MediaElementAudioSourceNode,
     }
 
-    pub struct AudioContext {
-        ctx: once_cell::sync::Lazy<web_sys::AudioContext>,
+    struct InnerContext {
+        ctx: web_sys::AudioContext,
+        gain: web_sys::GainNode,
     }
 
-    fn ctx_init() -> web_sys::AudioContext {
-        web_sys::AudioContext::new().unwrap()
+    impl InnerContext {
+        fn new() -> Self {
+            // Will only panic is the specified sample rate isn't supported.
+            // Since we don't specify sample rate, this will never fail.
+            // https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/AudioContext
+            let ctx = web_sys::AudioContext::new().unwrap();
+            let gain = ctx.create_gain().unwrap();
+            gain.connect_with_audio_node(&ctx.destination()).unwrap();
+            gain.gain().set_value(0.);
+            Self { ctx, gain }
+        }
+    }
+
+    pub struct AudioContext {
+        ctx: once_cell::sync::Lazy<InnerContext>,
     }
 
     impl AudioContext {
         pub fn new() -> Self {
-            // Will only panic is the specified sample rate isn't supported.
-            // Since we don't specify sample rate, this will never fail.
-            // https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/AudioContext
-            let ctx = once_cell::sync::Lazy::new(ctx_init as _);
+            let ctx = once_cell::sync::Lazy::new(InnerContext::new as _);
             Self { ctx }
         }
 
+        pub fn set_global_volume(&mut self, volume: f32) {
+            self.ctx.gain.gain().set_value(volume);
+        }
+
+        pub fn global_volume(&self) -> f32 {
+            self.ctx.gain.gain().value()
+        }
+
         pub fn play_new(&self, source: StreamingAudioSource) -> eyre::Result<Sink> {
-            let node = self.ctx.create_media_element_source(&source.inner).unwrap();
-            node.connect_with_audio_node(&self.ctx.destination())
-                .unwrap();
+            let node = self.ctx.ctx.create_media_element_source(&source.inner).unwrap();
+            node.connect_with_audio_node(&self.ctx.gain).unwrap();
             let _r = source.inner.play();
             Ok(Sink {
                 source,
@@ -274,7 +292,7 @@ mod native {
                 let shared = std::sync::Arc::new(data);
                 let cursor = std::io::Cursor::new(shared.clone());
                 let cursor = CursorOverShared::new(cursor);
-                let decoder = rodio::Decoder::new(cursor);
+                let _decoder = rodio::Decoder::new(cursor);
             }
         }
     }
