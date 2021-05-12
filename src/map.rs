@@ -142,6 +142,10 @@ impl Map {
         }
     }
 
+    pub fn grid_size(&self) -> [usize; 2] {
+        [self.grid.width, self.grid.height]
+    }
+
     pub fn contains(&self, coord: Coord) -> bool {
         let (x, y) = coord;
         x < self.grid.width && y < self.grid.height

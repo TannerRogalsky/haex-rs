@@ -31,7 +31,7 @@ impl NopSlide {
                         use crate::map::*;
                         let cell = neighbor_coord_mult(origin, direction, index);
                         if let Ok(cell) = cell {
-                            let (tile_width, tile_height) = main.map.tile_size;
+                            let [tile_width, tile_height] = main.map.tile_size;
                             main.map.map.make_open(cell, direction);
                             let batch = create_batch(tile_width, tile_height, &main.map.map, tiles);
                             main.map.batch.clear();

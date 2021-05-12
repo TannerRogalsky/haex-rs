@@ -5,7 +5,7 @@ fn main() -> eyre::Result<()> {
     let (width, height) = (1280, 720);
     let event_loop = glutin::event_loop::EventLoop::new();
     let wb = glutin::window::WindowBuilder::new()
-        .with_title("tojam")
+        .with_title("HAEX")
         .with_inner_size(glutin::dpi::PhysicalSize::new(width, height));
     let (glow_ctx, window) = window::init_ctx(wb, &event_loop);
     let ctx = solstice_2d::solstice::Context::new(glow_ctx);

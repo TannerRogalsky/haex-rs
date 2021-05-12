@@ -5,7 +5,7 @@ use solstice_2d::{Color, Draw};
 pub struct Main {
     pub map: Map,
     pub player: crate::player::Player,
-    nop_slide: Option<crate::cron::ID>,
+    active_program: Option<crate::cron::ID>,
     progression: crate::MapProgression,
 }
 
@@ -34,12 +34,18 @@ impl Main {
         Ok(Self {
             map,
             player,
-            nop_slide: None,
+            active_program: None,
             progression: settings,
         })
     }
 
     pub fn update(mut self, dt: std::time::Duration, mut ctx: StateContext) -> State {
+        if let Some(active_program) = self.active_program {
+            if !ctx.cron.contains(active_program) {
+                self.active_program = None;
+            }
+        }
+
         use crate::map;
         let direction = if ctx.input_state.w {
             Some(map::Direction::N)
@@ -92,14 +98,14 @@ impl Main {
         }
 
         if cfg!(debug_assertions) {
-            if ctx.input_state.ctrl && self.nop_slide.is_none() {
+            if ctx.input_state.ctrl && self.active_program.is_none() {
                 let state = crate::programs::StateMut {
                     ctx: &mut ctx,
                     player: &mut self.player,
                     map: &mut self.map,
                 };
                 let r = crate::programs::NopSlide::new(state);
-                self.nop_slide = Some(r.callback);
+                self.active_program = Some(r.callback);
             }
         }
 
@@ -111,16 +117,44 @@ impl Main {
         let map = self.map.batch.unmap(ctx.ctx);
         const BLACK: Color = Color::new(0., 0., 0., 1.);
 
+        let mut quads = crate::Quads {
+            metadata: &ctx.resources.sprites_metadata,
+            vertices: Vec::with_capacity(4),
+            count: 0,
+        };
+        quads.add(
+            solstice_2d::Rectangle {
+                x: 0.0,
+                y: 0.0,
+                width: 256.,
+                height: 256.,
+            },
+            "boss_contrast.png",
+        );
+
         let mut g = ctx.gfx.lock(ctx.ctx);
         g.clear(BLACK);
 
         g.set_canvas(Some(ctx.canvas.clone()));
         g.clear(BLACK);
 
+        g.set_shader(Some(ctx.resources.shaders.menu.clone()));
+        g.image(
+            solstice_2d::Geometry::from(quads.clone()),
+            &ctx.resources.sprites,
+        );
+        g.set_shader(None);
+
+        let [gw, gh] = self.map.map.grid_size();
+        let [tw, th] = self.map.tile_size;
+        let x = 256. / 2. - gw as f32 * tw / 2.;
+        let y = 256. / 2. - gh as f32 * th / 2.;
+        let camera = solstice_2d::Transform2D::translation(x, y);
+        g.set_camera(camera);
         g.image(map, &ctx.resources.sprites);
 
         {
-            let (w, h) = self.map.tile_size;
+            let [w, h] = self.map.tile_size;
             self.map.map.draw_graph(w, h, &mut g);
         }
 
@@ -133,7 +167,7 @@ impl Main {
                 solstice_2d::Circle {
                     x: 0.,
                     y: 0.,
-                    radius: 5.,
+                    radius: self.map.tile_size[0] / 4.,
                     segments: 4,
                 },
                 [0.6, 1., 0.4, 1.0],
@@ -141,6 +175,7 @@ impl Main {
             );
         }
 
+        g.set_camera(solstice_2d::Transform2D::default());
         g.set_canvas(None);
         g.set_shader(Some({
             let mut shader = ctx.resources.shaders.aesthetic.clone();

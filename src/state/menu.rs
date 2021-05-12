@@ -1,53 +1,8 @@
 use super::{State, StateContext};
 use crate::winit::event::{ElementState, MouseButton};
 use crate::MouseEvent;
-use solstice::{quad_batch::Quad, viewport::Viewport};
-use solstice_2d::{solstice, Color, Draw, Rectangle, Vertex2D};
-
-#[derive(Clone)]
-struct Quads<'a> {
-    metadata: &'a std::collections::HashMap<String, Quad<(f32, f32)>>,
-    vertices: Vec<Vertex2D>,
-    count: usize,
-}
-
-impl Quads<'_> {
-    fn add(&mut self, position: solstice_2d::Rectangle, name: &str) {
-        if let Some(uvs) = self.metadata.get(name) {
-            let quad = uvs
-                .zip(Quad::from(Viewport::new(
-                    position.x,
-                    position.y,
-                    position.width,
-                    position.height,
-                )))
-                .map(|((s, t), (x, y))| Vertex2D {
-                    position: [x, y],
-                    uv: [s, t],
-                    ..Default::default()
-                });
-            self.vertices.extend_from_slice(&quad.vertices);
-            self.count += 1;
-        }
-    }
-
-    fn clear(&mut self) {
-        self.count = 0;
-        self.vertices.clear();
-    }
-}
-
-impl From<Quads<'_>> for solstice_2d::Geometry<'_, Vertex2D> {
-    fn from(quads: Quads<'_>) -> Self {
-        let indices = (0..quads.count)
-            .flat_map(|i| {
-                let offset = i as u32 * 4;
-                std::array::IntoIter::new([0, 1, 2, 2, 1, 3]).map(move |i| i + offset)
-            })
-            .collect::<Vec<_>>();
-        solstice_2d::Geometry::new(quads.vertices, Some(indices))
-    }
-}
+use solstice::viewport::Viewport;
+use solstice_2d::{solstice, Color, Draw, Rectangle};
 
 pub struct Menu {
     volume_clicked: bool,
@@ -63,7 +18,7 @@ impl Menu {
     }
 
     pub fn render(&mut self, ctx: StateContext) {
-        let mut quads = Quads {
+        let mut quads = crate::Quads {
             metadata: &ctx.resources.sprites_metadata,
             vertices: Vec::with_capacity(4 * 10),
             count: 0,

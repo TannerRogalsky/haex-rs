@@ -14,10 +14,18 @@ pub struct StateContext<'a> {
     pub time: std::time::Duration,
 }
 
+// pub struct MapSettings {
+//     width: usize,
+//     height: usize,
+//     tile_width: f32,
+//     tile_height: f32,
+//     seed: u64,
+// }
+
 pub struct Map {
     pub map: crate::map::Map,
     pub batch: solstice_2d::solstice::quad_batch::QuadBatch<solstice_2d::Vertex2D>,
-    pub tile_size: (f32, f32),
+    pub tile_size: [f32; 2],
 }
 
 impl Map {
@@ -27,11 +35,7 @@ impl Map {
         seed: u64,
         ctx: &mut StateContext,
     ) -> Result<Self, solstice_2d::GraphicsError> {
-        let mut rng = {
-            use rand::SeedableRng;
-            rand::rngs::SmallRng::seed_from_u64(seed)
-        };
-
+        let mut rng: rand::rngs::SmallRng = rand::SeedableRng::seed_from_u64(seed);
         Self::gen(width, height, ctx, &mut rng)
     }
 
@@ -41,8 +45,8 @@ impl Map {
         ctx: &mut StateContext,
         rng: &mut R,
     ) -> Result<Self, solstice_2d::GraphicsError> {
-        let tile_width = 256. / width as f32;
-        let tile_height = 256. / height as f32;
+        let tile_width = 32.;
+        let tile_height = 32.;
         let map = crate::map::Map::new(width, height, rng);
         let batch = crate::map::create_batch(
             tile_width,
@@ -57,7 +61,7 @@ impl Map {
         Ok(Map {
             map,
             batch: sp,
-            tile_size: (tile_width, tile_height),
+            tile_size: [tile_width, tile_height],
         })
     }
 
@@ -66,12 +70,12 @@ impl Map {
     }
 
     fn scale(&self, (x, y): (f32, f32)) -> (f32, f32) {
-        (x * self.tile_size.0, y * self.tile_size.1)
+        (x * self.tile_size[0], y * self.tile_size[1])
     }
 
     pub fn pixel_to_coord(&self, (x, y): (f32, f32)) -> crate::map::Coord {
-        let x = (x / self.tile_size.0).floor() as usize;
-        let y = (y / self.tile_size.1).floor() as usize;
+        let x = (x / self.tile_size[0]).floor() as usize;
+        let y = (y / self.tile_size[1]).floor() as usize;
         (x, y)
     }
 }

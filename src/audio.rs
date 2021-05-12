@@ -62,7 +62,11 @@ mod web {
         }
 
         pub fn play_new(&self, source: StreamingAudioSource) -> eyre::Result<Sink> {
-            let node = self.ctx.ctx.create_media_element_source(&source.inner).unwrap();
+            let node = self
+                .ctx
+                .ctx
+                .create_media_element_source(&source.inner)
+                .unwrap();
             node.connect_with_audio_node(&self.ctx.gain).unwrap();
             let _r = source.inner.play();
             Ok(Sink {
