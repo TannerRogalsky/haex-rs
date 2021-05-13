@@ -46,11 +46,15 @@ impl Direction {
     }
 }
 
+fn d1_to_d2(index: usize, width: usize) -> Coord {
+    (index % width, index / width)
+}
+
 #[derive(Debug)]
-struct Grid {
-    data: Box<[BitFlags<Direction>]>,
-    width: usize,
-    height: usize,
+pub struct Grid {
+    pub data: Box<[BitFlags<Direction>]>,
+    pub width: usize,
+    pub height: usize,
 }
 
 impl Grid {
@@ -67,7 +71,7 @@ impl Grid {
     }
 
     fn index_to_coord(&self, index: usize) -> Coord {
-        (index % self.width, index / self.width)
+        d1_to_d2(index, self.width)
     }
 
     fn as_graph(&self) -> Graph {
@@ -142,6 +146,10 @@ impl Map {
         }
     }
 
+    pub fn grid(&self) -> &Grid {
+        &self.grid
+    }
+
     pub fn grid_size(&self) -> [usize; 2] {
         [self.grid.width, self.grid.height]
     }
@@ -156,19 +164,13 @@ impl Map {
     }
 
     pub fn make_open(&mut self, from: Coord, direction: Direction) {
-        let cell = self
-            .grid
-            .checked_coord_to_index(from)
-            .and_then(|index| self.grid.data.get_mut(index));
-        if let Some(cell) = cell {
-            *cell |= direction;
-        }
+        let cell = self.grid.checked_coord_to_index(from);
         let neighbor = neighbor_coord(from, direction)
             .ok()
-            .and_then(|coord| self.grid.checked_coord_to_index(coord))
-            .and_then(|index| self.grid.data.get_mut(index));
-        if let Some(cell) = neighbor {
-            *cell |= direction.opposite();
+            .and_then(|coord| self.grid.checked_coord_to_index(coord));
+        if let Some((cell, neighbor)) = cell.zip(neighbor) {
+            self.grid.data[cell] |= direction;
+            self.grid.data[neighbor] |= direction.opposite();
         }
     }
 
@@ -235,20 +237,70 @@ pub struct ProgramGenSettings {
     pub nop_slide_count: usize,
 }
 
+pub fn apply_not_corner_bit(grid: &mut Grid) {
+    for index in 0..grid.data.len() {
+        let (x, y) = grid.index_to_coord(index);
+        if let Ok((tx, ty)) = neighbor_coord((x, y), Direction::SEC) {
+            let t1 = grid.coord_to_index((tx, y));
+            let t2 = grid.coord_to_index((x, ty));
+            if grid.data[index].contains(Direction::E)
+                && grid.data[index].contains(Direction::S)
+                && grid.data[t1].contains(Direction::S)
+                && grid.data[t2].contains(Direction::E)
+            {
+                grid.data[index].insert(Direction::SEC);
+            }
+        }
+        if let Ok((tx, ty)) = neighbor_coord((x, y), Direction::SWC) {
+            let t1 = grid.coord_to_index((tx, y));
+            let t2 = grid.coord_to_index((x, ty));
+            if grid.data[index].contains(Direction::W)
+                && grid.data[index].contains(Direction::S)
+                && grid.data[t1].contains(Direction::S)
+                && grid.data[t2].contains(Direction::W)
+            {
+                grid.data[index].insert(Direction::SWC);
+            }
+        }
+        if let Ok((tx, ty)) = neighbor_coord((x, y), Direction::NWC) {
+            let t1 = grid.coord_to_index((tx, y));
+            let t2 = grid.coord_to_index((x, ty));
+            if grid.data[index].contains(Direction::W)
+                && grid.data[index].contains(Direction::N)
+                && grid.data[t1].contains(Direction::N)
+                && grid.data[t2].contains(Direction::W)
+            {
+                grid.data[index].insert(Direction::NWC);
+            }
+        }
+        if let Ok((tx, ty)) = neighbor_coord((x, y), Direction::NEC) {
+            let t1 = grid.coord_to_index((tx, y));
+            let t2 = grid.coord_to_index((x, ty));
+            if grid.data[index].contains(Direction::E)
+                && grid.data[index].contains(Direction::N)
+                && grid.data[t1].contains(Direction::N)
+                && grid.data[t2].contains(Direction::E)
+            {
+                grid.data[index].insert(Direction::NEC);
+            }
+        }
+    }
+}
+
 pub fn create_batch(
     tile_width: f32,
     tile_height: f32,
-    map: &Map,
+    grid: &Grid,
     tiles: &std::collections::HashMap<String, solstice_2d::solstice::quad_batch::Quad<(f32, f32)>>,
 ) -> Vec<solstice_2d::solstice::quad_batch::Quad<solstice_2d::Vertex2D>> {
     use solstice_2d::solstice::{quad_batch::Quad, viewport::Viewport};
 
-    let mut quads = Vec::with_capacity(map.grid.width * map.grid.height);
+    let mut quads = Vec::with_capacity(grid.width * grid.height);
 
-    for x in 0..map.grid.width {
-        for y in 0..map.grid.height {
-            let index = map.grid.coord_to_index((x, y));
-            let cell = map.grid.data[index];
+    for x in 0..grid.width {
+        for y in 0..grid.height {
+            let index = grid.coord_to_index((x, y));
+            let cell = grid.data[index];
 
             let name = if cell.is_empty() {
                 "tiles/tile_342.png"
@@ -408,12 +460,15 @@ pub fn create_batch(
                     | Direction::E
                     | Direction::W
             {
-                "tiles/tile_340.png'"
+                "tiles/tile_340.png"
             } else {
-                panic!()
+                panic!("couldn't match cell to tile. {:?}", cell);
             };
 
-            let tile = tiles.get(name).unwrap().clone();
+            let tile = match tiles.get(name).cloned() {
+                None => panic!("couldn't find {}", name),
+                Some(tile) => tile,
+            };
             let quad = Quad::from(Viewport::new(
                 x as f32 * tile_width,
                 y as f32 * tile_height,

@@ -1,3 +1,4 @@
+mod bad_end;
 mod main;
 mod main_to_main;
 mod menu;
@@ -51,7 +52,7 @@ impl Map {
         let batch = crate::map::create_batch(
             tile_width,
             tile_height,
-            &map,
+            map.grid(),
             &ctx.resources.sprites_metadata,
         );
         let mut sp = solstice_2d::solstice::quad_batch::QuadBatch::new(ctx.ctx, batch.len())?;
@@ -83,7 +84,8 @@ impl Map {
 pub enum State {
     Menu(menu::Menu),
     Main(main::Main),
-    MainToMain(main_to_main::MainToMain), // Over,
+    MainToMain(main_to_main::MainToMain),
+    BadEnd(bad_end::BadEnd),
 }
 
 impl State {
@@ -104,6 +106,7 @@ impl State {
             State::Menu(menu) => menu.render(ctx),
             State::Main(main) => main.render(ctx),
             State::MainToMain(inner) => inner.render(ctx),
+            State::BadEnd(inner) => inner.render(ctx),
         }
     }
 
@@ -116,6 +119,7 @@ impl State {
             }
             State::Main(_) => {}
             State::MainToMain(_) => {}
+            State::BadEnd(_) => {}
         }
     }
 
@@ -133,6 +137,7 @@ impl State {
             }
             State::Main(_) => {}
             State::MainToMain(_) => {}
+            State::BadEnd(_) => {}
         }
     }
 }

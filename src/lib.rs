@@ -222,48 +222,63 @@ impl Game {
     }
 }
 
-#[derive(Clone)]
-struct Quads<'a> {
-    metadata: &'a std::collections::HashMap<String, solstice_2d::solstice::quad_batch::Quad<(f32, f32)>>,
-    vertices: Vec<solstice_2d::Vertex2D>,
-    count: usize,
-}
+use quads::Quads;
+mod quads {
+    use solstice_2d::{
+        solstice::{quad_batch::Quad, viewport::Viewport},
+        Vertex2D,
+    };
 
-impl Quads<'_> {
-    fn add(&mut self, position: solstice_2d::Rectangle, name: &str) {
-        use solstice_2d::{Vertex2D, solstice::{quad_batch::Quad, viewport::Viewport}};
-        if let Some(uvs) = self.metadata.get(name) {
-            let quad = uvs
-                .zip(Quad::from(Viewport::new(
-                    position.x,
-                    position.y,
-                    position.width,
-                    position.height,
-                )))
-                .map(|((s, t), (x, y))| Vertex2D {
-                    position: [x, y],
-                    uv: [s, t],
-                    ..Default::default()
-                });
-            self.vertices.extend_from_slice(&quad.vertices);
-            self.count += 1;
+    #[derive(Clone)]
+    pub struct Quads<'a> {
+        metadata: &'a std::collections::HashMap<String, Quad<(f32, f32)>>,
+        vertices: Vec<Vertex2D>,
+        count: usize,
+    }
+
+    impl<'a> Quads<'a> {
+        pub fn new(metadata: &'a std::collections::HashMap<String, Quad<(f32, f32)>>) -> Self {
+            Self {
+                metadata,
+                vertices: vec![],
+                count: 0
+            }
+        }
+
+        pub fn add(&mut self, position: solstice_2d::Rectangle, name: &str) {
+            if let Some(uvs) = self.metadata.get(name) {
+                let quad = uvs
+                    .zip(Quad::from(Viewport::new(
+                        position.x,
+                        position.y,
+                        position.width,
+                        position.height,
+                    )))
+                    .map(|((s, t), (x, y))| Vertex2D {
+                        position: [x, y],
+                        uv: [s, t],
+                        ..Default::default()
+                    });
+                self.vertices.extend_from_slice(&quad.vertices);
+                self.count += 1;
+            }
+        }
+
+        pub fn clear(&mut self) {
+            self.count = 0;
+            self.vertices.clear();
         }
     }
 
-    fn clear(&mut self) {
-        self.count = 0;
-        self.vertices.clear();
-    }
-}
-
-impl From<Quads<'_>> for solstice_2d::Geometry<'_, solstice_2d::Vertex2D> {
-    fn from(quads: Quads<'_>) -> Self {
-        let indices = (0..quads.count)
-            .flat_map(|i| {
-                let offset = i as u32 * 4;
-                std::array::IntoIter::new([0, 1, 2, 2, 1, 3]).map(move |i| i + offset)
-            })
-            .collect::<Vec<_>>();
-        solstice_2d::Geometry::new(quads.vertices, Some(indices))
+    impl From<Quads<'_>> for solstice_2d::Geometry<'_, Vertex2D> {
+        fn from(quads: Quads<'_>) -> Self {
+            let indices = (0..quads.count)
+                .flat_map(|i| {
+                    let offset = i as u32 * 4;
+                    std::array::IntoIter::new([0, 1, 2, 2, 1, 3]).map(move |i| i + offset)
+                })
+                .collect::<Vec<_>>();
+            solstice_2d::Geometry::new(quads.vertices, Some(indices))
+        }
     }
 }

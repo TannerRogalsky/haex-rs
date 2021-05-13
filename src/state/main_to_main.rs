@@ -38,11 +38,7 @@ impl MainToMain {
 
             g.set_canvas(Some(ctx.canvas.clone()));
             g.clear(BLACK);
-            let mut quads = crate::Quads {
-                metadata: &ctx.resources.sprites_metadata,
-                vertices: Vec::with_capacity(4),
-                count: 0,
-            };
+            let mut quads = crate::Quads::new(&ctx.resources.sprites_metadata);
             quads.add(
                 solstice_2d::Rectangle {
                     x: 0.0,

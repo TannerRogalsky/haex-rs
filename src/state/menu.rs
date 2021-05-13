@@ -18,11 +18,7 @@ impl Menu {
     }
 
     pub fn render(&mut self, ctx: StateContext) {
-        let mut quads = crate::Quads {
-            metadata: &ctx.resources.sprites_metadata,
-            vertices: Vec::with_capacity(4 * 10),
-            count: 0,
-        };
+        let mut quads = crate::Quads::new(&ctx.resources.sprites_metadata);
         quads.add(
             Rectangle {
                 x: 0.0,

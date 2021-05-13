@@ -90,7 +90,15 @@ impl Main {
                                     });
                                 }
                             }
-                            ProgressionType::BadEnding => unimplemented!(),
+                            ProgressionType::BadEnding => {
+                                return match super::bad_end::BadEnd::new(ctx) {
+                                    Ok(state) => State::BadEnd(state),
+                                    Err(err) => {
+                                        log::error!("Error transitioning to BadEnd: {}", err);
+                                        State::Menu(super::menu::Menu::new())
+                                    }
+                                };
+                            }
                         }
                     }
                 }
@@ -117,11 +125,7 @@ impl Main {
         let map = self.map.batch.unmap(ctx.ctx);
         const BLACK: Color = Color::new(0., 0., 0., 1.);
 
-        let mut quads = crate::Quads {
-            metadata: &ctx.resources.sprites_metadata,
-            vertices: Vec::with_capacity(4),
-            count: 0,
-        };
+        let mut quads = crate::Quads::new(&ctx.resources.sprites_metadata);
         quads.add(
             solstice_2d::Rectangle {
                 x: 0.0,
@@ -147,9 +151,25 @@ impl Main {
 
         let [gw, gh] = self.map.map.grid_size();
         let [tw, th] = self.map.tile_size;
-        let x = 256. / 2. - gw as f32 * tw / 2.;
-        let y = 256. / 2. - gh as f32 * th / 2.;
-        let camera = solstice_2d::Transform2D::translation(x, y);
+        let [pw, ph] = [gw as f32 * tw, gh as f32 * th];
+        let camera_should_follow = pw > 256. || ph > 256.;
+
+        let camera = if camera_should_follow {
+            let (player_x, player_y) = self.player.position();
+            let x = player_x - 256. / 2.;
+            let y = player_y - 256. / 2.;
+
+            let max_x = (pw - 256.).max(0.);
+            let max_y = (ph - 256.).max(0.);
+
+            let x = x.clamp(0., max_x);
+            let y = y.clamp(0., max_y);
+            solstice_2d::Transform2D::translation(-x, -y)
+        } else {
+            let x = 256. / 2. - pw / 2.;
+            let y = 256. / 2. - ph / 2.;
+            solstice_2d::Transform2D::translation(x, y)
+        };
         g.set_camera(camera);
         g.image(map, &ctx.resources.sprites);
 
