@@ -58,11 +58,59 @@ pub struct Grid {
 }
 
 impl Grid {
-    fn coord_to_index(&self, coord: Coord) -> usize {
+    pub fn new<R: rand::Rng>(width: usize, height: usize, rng: &mut R) -> Self {
+        let weights = Weights {
+            random: 1.,
+            newest: 1.,
+            ..Default::default()
+        };
+        let grid = growing_tree(width, height, weights, rng);
+        Self {
+            data: grid.into_boxed_slice(),
+            width,
+            height,
+        }
+    }
+
+    pub fn grid_size(&self) -> [usize; 2] {
+        [self.width, self.height]
+    }
+
+    pub fn contains(&self, coord: Coord) -> bool {
+        let (x, y) = coord;
+        x < self.width && y < self.height
+    }
+
+    pub fn make_open(&mut self, from: Coord, direction: Direction) {
+        let cell = self.checked_coord_to_index(from);
+        let neighbor = neighbor_coord(from, direction)
+            .ok()
+            .and_then(|coord| self.checked_coord_to_index(coord));
+        if let Some((cell, neighbor)) = cell.zip(neighbor) {
+            self.data[cell] |= direction;
+            self.data[neighbor] |= direction.opposite();
+        }
+    }
+
+    pub fn valid_move(&self, start: Coord, direction: Direction) -> Option<Coord> {
+        let v = self.data.get(self.coord_to_index(start))?;
+        if v.contains(direction) {
+            let end = neighbor_coord(start, direction).ok()?;
+            if self.checked_coord_to_index(end).is_some() {
+                Some(end)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn coord_to_index(&self, coord: Coord) -> usize {
         coord.0 + coord.1 * self.width
     }
 
-    fn checked_coord_to_index(&self, coord: Coord) -> Option<usize> {
+    pub fn checked_coord_to_index(&self, coord: Coord) -> Option<usize> {
         if coord.0 < self.width && coord.1 < self.height {
             Some(self.coord_to_index(coord))
         } else {
@@ -70,11 +118,11 @@ impl Grid {
         }
     }
 
-    fn index_to_coord(&self, index: usize) -> Coord {
+    pub fn index_to_coord(&self, index: usize) -> Coord {
         d1_to_d2(index, self.width)
     }
 
-    fn as_graph(&self) -> Graph {
+    pub fn as_graph(&self) -> Graph {
         let mut graph = Graph::with_capacity(self.data.len(), self.data.len() * 2);
 
         let origin = self.index_to_coord(0);
@@ -101,129 +149,8 @@ impl Grid {
     }
 }
 
-type Graph = petgraph::graphmap::UnGraphMap<Coord, ()>;
+pub type Graph = petgraph::graphmap::UnGraphMap<Coord, ()>;
 pub type Coord = (usize, usize);
-
-#[derive(Debug)]
-pub struct Map {
-    grid: Grid,
-    graph: Graph,
-    longest_path: Vec<Coord>,
-}
-
-impl Map {
-    pub fn new<R: rand::Rng>(width: usize, height: usize, rng: &mut R) -> Self {
-        let weights = Weights {
-            random: 1.,
-            newest: 1.,
-            ..Default::default()
-        };
-        let grid = growing_tree(width, height, weights, rng);
-        let grid = Grid {
-            data: grid.into_boxed_slice(),
-            width,
-            height,
-        };
-        let graph = grid.as_graph();
-
-        let dead_ends = dead_ends(&graph).collect::<Vec<_>>();
-        let mut longest_path = vec![];
-        for from in dead_ends.iter().copied() {
-            for to in dead_ends.iter().copied() {
-                let path = petgraph::algo::astar(&graph, from, |node| node == to, |_| 1, |_| 0);
-                if let Some((_cost, path)) = path {
-                    if path.len() > longest_path.len() {
-                        longest_path = path;
-                    }
-                }
-            }
-        }
-
-        Self {
-            grid,
-            graph,
-            longest_path,
-        }
-    }
-
-    pub fn grid(&self) -> &Grid {
-        &self.grid
-    }
-
-    pub fn grid_size(&self) -> [usize; 2] {
-        [self.grid.width, self.grid.height]
-    }
-
-    pub fn contains(&self, coord: Coord) -> bool {
-        let (x, y) = coord;
-        x < self.grid.width && y < self.grid.height
-    }
-
-    pub fn path(&self) -> &[Coord] {
-        &self.longest_path
-    }
-
-    pub fn make_open(&mut self, from: Coord, direction: Direction) {
-        let cell = self.grid.checked_coord_to_index(from);
-        let neighbor = neighbor_coord(from, direction)
-            .ok()
-            .and_then(|coord| self.grid.checked_coord_to_index(coord));
-        if let Some((cell, neighbor)) = cell.zip(neighbor) {
-            self.grid.data[cell] |= direction;
-            self.grid.data[neighbor] |= direction.opposite();
-        }
-    }
-
-    pub fn valid_move(&self, start: Coord, direction: Direction) -> Option<Coord> {
-        let v = self.grid.data.get(self.grid.coord_to_index(start))?;
-        if v.contains(direction) {
-            let end = neighbor_coord(start, direction).ok()?;
-            if self.grid.checked_coord_to_index(end).is_some() {
-                Some(end)
-            } else {
-                None
-            }
-        } else {
-            None
-        }
-    }
-
-    pub fn draw_graph(&self, dx: f32, dy: f32, g: &mut solstice_2d::GraphicsLock) {
-        let circle = solstice_2d::Circle {
-            radius: dx * 0.2,
-            segments: 6,
-            ..Default::default()
-        };
-        let mut traversal = petgraph::visit::Bfs::new(&self.graph, (0, 0));
-        while let Some((x, y)) = traversal.next(&self.graph) {
-            let color = if self.longest_path.contains(&(x, y)) {
-                [1., 1., 1., 1.]
-            } else {
-                [0., 0., 0., 1.]
-            };
-
-            let (tx, ty) = ((x as f32 + 0.5) * dx, (y as f32 + 0.5) * dy);
-            for (nx, ny) in self.graph.neighbors((x, y)) {
-                let (ntx, nty) = ((nx as f32 + 0.5) * dx, (ny as f32 + 0.5) * dy);
-                g.line_2d(vec![
-                    solstice_2d::LineVertex {
-                        position: [tx, ty, 0.],
-                        width: 2.,
-                        color,
-                    },
-                    solstice_2d::LineVertex {
-                        position: [ntx, nty, 0.],
-                        width: 2.,
-                        color,
-                    },
-                ]);
-            }
-            let transform = solstice_2d::Transform2D::translation(tx, ty);
-            use solstice_2d::Draw;
-            g.draw_with_color_and_transform(circle, color, transform);
-        }
-    }
-}
 
 #[derive(Debug, Copy, Clone)]
 pub struct MapGenSettings {
@@ -486,17 +413,6 @@ pub fn create_batch(
     }
 
     quads
-}
-
-fn dead_ends(graph: &Graph) -> impl Iterator<Item = Coord> + '_ {
-    let traversal = petgraph::visit::Dfs::new(graph, (0, 0));
-    petgraph::visit::Walker::iter(traversal, graph).filter_map(move |node| {
-        if graph.neighbors(node).count() == 1 {
-            Some(node)
-        } else {
-            None
-        }
-    })
 }
 
 pub fn neighbor_coord(

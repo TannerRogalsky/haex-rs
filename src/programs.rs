@@ -31,16 +31,16 @@ impl NopSlide {
                         use crate::map::*;
                         let cell = neighbor_coord_mult(origin, direction, index);
                         if let Ok(cell) = cell {
-                            let [tile_width, tile_height] = main.map.tile_size;
-                            main.map.map.make_open(cell, direction);
+                            let [tile_width, tile_height] = main.map.inner.tile_size;
+                            main.map.inner.grid.make_open(cell, direction);
                             let batch =
-                                create_batch(tile_width, tile_height, main.map.map.grid(), tiles);
-                            main.map.batch.clear();
+                                create_batch(tile_width, tile_height, &main.map.inner.grid, tiles);
+                            main.map.inner.batch.clear();
                             for quad in batch {
-                                main.map.batch.push(quad);
+                                main.map.inner.batch.push(quad);
                             }
 
-                            if main.map.map.contains(cell) {
+                            if main.map.inner.grid.contains(cell) {
                                 changed = true
                             }
                         }

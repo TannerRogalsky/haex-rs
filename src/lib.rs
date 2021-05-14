@@ -105,27 +105,35 @@ impl Game {
 
         let cron = cron::Cron::default();
 
+        // let maps = MapProgression {
+        //     settings: map::MapGenSettings {
+        //         width: 5,
+        //         height: 5,
+        //         programs: map::ProgramGenSettings { nop_slide_count: 0 },
+        //     },
+        //     exit: Some(ProgressionType::Standard(Box::new(MapProgression {
+        //         settings: map::MapGenSettings {
+        //             width: 7,
+        //             height: 7,
+        //             programs: map::ProgramGenSettings { nop_slide_count: 0 },
+        //         },
+        //         exit: Some(ProgressionType::Standard(Box::new(MapProgression {
+        //             settings: map::MapGenSettings {
+        //                 width: 10,
+        //                 height: 10,
+        //                 programs: map::ProgramGenSettings { nop_slide_count: 0 },
+        //             },
+        //             exit: Some(ProgressionType::BadEnding),
+        //         }))),
+        //     }))),
+        // };
         let maps = MapProgression {
             settings: map::MapGenSettings {
                 width: 5,
                 height: 5,
                 programs: map::ProgramGenSettings { nop_slide_count: 0 },
             },
-            exit: Some(ProgressionType::Standard(Box::new(MapProgression {
-                settings: map::MapGenSettings {
-                    width: 7,
-                    height: 7,
-                    programs: map::ProgramGenSettings { nop_slide_count: 0 },
-                },
-                exit: Some(ProgressionType::Standard(Box::new(MapProgression {
-                    settings: map::MapGenSettings {
-                        width: 10,
-                        height: 10,
-                        programs: map::ProgramGenSettings { nop_slide_count: 0 },
-                    },
-                    exit: Some(ProgressionType::BadEnding),
-                }))),
-            }))),
+            exit: Some(ProgressionType::BadEnding),
         };
 
         let audio_ctx = audio::AudioContext::new();
@@ -241,7 +249,7 @@ mod quads {
             Self {
                 metadata,
                 vertices: vec![],
-                count: 0
+                count: 0,
             }
         }
 

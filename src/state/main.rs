@@ -1,9 +1,9 @@
-use super::{Map, State, StateContext};
+use super::{NavigableMap, State, StateContext};
 use crate::ProgressionType;
 use solstice_2d::{Color, Draw};
 
 pub struct Main {
-    pub map: Map,
+    pub map: NavigableMap,
     pub player: crate::player::Player,
     active_program: Option<crate::cron::ID>,
     progression: crate::MapProgression,
@@ -23,11 +23,12 @@ impl Main {
         settings: crate::MapProgression,
     ) -> Result<Self, solstice_2d::GraphicsError> {
         let crate::map::MapGenSettings { width, height, .. } = settings.settings;
-        let map = Map::with_seed(width, height, seed, ctx)?;
+        let map = super::Map::with_seed(width, height, seed, ctx)?;
+        let map = NavigableMap::with_map(map);
 
         let player = {
-            let start = map.map.path()[0];
-            let (x, y) = map.coord_to_mid_pixel(start);
+            let start = map.longest_path[0];
+            let (x, y) = map.inner.coord_to_mid_pixel(start);
             crate::player::Player::new(x, y)
         };
 
@@ -60,9 +61,9 @@ impl Main {
         };
 
         if let Some(direction) = direction {
-            let start = self.map.pixel_to_coord(self.player.position());
-            if let Some(end) = self.map.map.valid_move(start, direction) {
-                let (x, y) = self.map.coord_to_mid_pixel(end);
+            let start = self.map.inner.pixel_to_coord(self.player.position());
+            if let Some(end) = self.map.inner.grid.valid_move(start, direction) {
+                let (x, y) = self.map.inner.coord_to_mid_pixel(end);
                 let time = std::time::Duration::from_secs_f32(0.2);
                 self.player.try_move(x, y, time);
             }
@@ -72,8 +73,8 @@ impl Main {
 
         {
             // player is at exit
-            let grid_pos = self.map.pixel_to_coord(self.player.position());
-            if let Some(target) = self.map.map.path().last().copied() {
+            let grid_pos = self.map.inner.pixel_to_coord(self.player.position());
+            if let Some(target) = self.map.longest_path.last().copied() {
                 if grid_pos == target {
                     let seed = ctx.time.as_millis() as u64;
                     if let Some(progression) = &self.progression.exit {
@@ -110,7 +111,7 @@ impl Main {
                 let state = crate::programs::StateMut {
                     ctx: &mut ctx,
                     player: &mut self.player,
-                    map: &mut self.map,
+                    map: &mut self.map.inner,
                 };
                 let r = crate::programs::NopSlide::new(state);
                 self.active_program = Some(r.callback);
@@ -122,7 +123,7 @@ impl Main {
 
     pub fn render(&mut self, ctx: StateContext) {
         let viewport = ctx.gfx.viewport().clone();
-        let map = self.map.batch.unmap(ctx.ctx);
+        let map = self.map.inner.batch.unmap(ctx.ctx);
         const BLACK: Color = Color::new(0., 0., 0., 1.);
 
         let mut quads = crate::Quads::new(&ctx.resources.sprites_metadata);
@@ -149,8 +150,8 @@ impl Main {
         );
         g.set_shader(None);
 
-        let [gw, gh] = self.map.map.grid_size();
-        let [tw, th] = self.map.tile_size;
+        let [gw, gh] = self.map.inner.grid.grid_size();
+        let [tw, th] = self.map.inner.tile_size;
         let [pw, ph] = [gw as f32 * tw, gh as f32 * th];
         let camera_should_follow = pw > 256. || ph > 256.;
 
@@ -173,10 +174,10 @@ impl Main {
         g.set_camera(camera);
         g.image(map, &ctx.resources.sprites);
 
-        {
-            let [w, h] = self.map.tile_size;
-            self.map.map.draw_graph(w, h, &mut g);
-        }
+        // {
+        //     let [w, h] = self.map.inner.tile_size;
+        //     self.map.draw_graph(w, h, &mut g);
+        // }
 
         {
             let (x, y) = self.player.position();
@@ -187,7 +188,7 @@ impl Main {
                 solstice_2d::Circle {
                     x: 0.,
                     y: 0.,
-                    radius: self.map.tile_size[0] / 4.,
+                    radius: self.map.inner.tile_size[0] / 4.,
                     segments: 4,
                 },
                 [0.6, 1., 0.4, 1.0],

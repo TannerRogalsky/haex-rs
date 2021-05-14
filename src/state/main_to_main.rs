@@ -82,13 +82,13 @@ impl MainToMain {
             }
         }
 
-        let [gw, _gh] = self.from.map.map.grid_size();
-        let [tw, _th] = self.from.map.tile_size;
+        let [gw, _gh] = self.from.map.inner.grid.grid_size();
+        let [tw, _th] = self.from.map.inner.tile_size;
         let d1 = 256. / (gw as f32 * tw);
         let dist = d1 / 2. / fovy.tan();
 
-        let [gw, _gh] = self.to.map.map.grid_size();
-        let [tw, _th] = self.to.map.tile_size;
+        let [gw, _gh] = self.to.map.inner.grid.grid_size();
+        let [tw, _th] = self.to.map.inner.tile_size;
         let d2 = 256. / (gw as f32 * tw);
         // let dist = d2 / 2. / fovy.tan();
 
@@ -100,25 +100,25 @@ impl MainToMain {
 
         let states = [&mut self.from, &mut self.to];
         for (index, main) in std::array::IntoIter::new(states).enumerate() {
-            let map = main.map.batch.unmap(ctx.ctx);
+            let map = main.map.inner.batch.unmap(ctx.ctx);
             let mut g = ctx.gfx.lock(ctx.ctx);
 
             g.set_canvas(Some(ctx.canvas.clone()));
             g.clear(BLACK);
 
             {
-                let [gw, gh] = main.map.map.grid_size();
-                let [tw, th] = main.map.tile_size;
+                let [gw, gh] = main.map.inner.grid.grid_size();
+                let [tw, th] = main.map.inner.tile_size;
                 let x = 256. / (gw as f32 * tw);
                 let y = 256. / (gh as f32 * th);
                 let camera = solstice_2d::Transform2D::scale(x, y);
                 g.set_camera(camera);
                 g.image(map, &ctx.resources.sprites);
 
-                {
-                    let [w, h] = main.map.tile_size;
-                    main.map.map.draw_graph(w, h, &mut g);
-                }
+                // {
+                //     let [w, h] = main.map.inner.tile_size;
+                //     main.map.draw_graph(w, h, &mut g);
+                // }
 
                 {
                     let (x, y) = main.player.position();
