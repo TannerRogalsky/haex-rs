@@ -1,5 +1,5 @@
 #ifdef VERTEX
-extern float z;
+uniform float z;
 
 vec4 position(mat4 transform_projection, vec4 vertex_position) {
   vertex_position.z = z;
@@ -8,8 +8,8 @@ vec4 position(mat4 transform_projection, vec4 vertex_position) {
 #endif
 
 #ifdef PIXEL
-extern float scale;
-extern float strength;
+uniform float scale;
+uniform float strength;
 
 float hash(vec2 p)  // replace this by something better
 {

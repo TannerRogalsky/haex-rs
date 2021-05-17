@@ -5,8 +5,8 @@ use solstice_2d::solstice::quad_batch::QuadBatch;
 use solstice_2d::{Color, Draw};
 
 pub struct BadEnd {
-    map: super::Map,
-    player: crate::player::Player,
+    pub map: super::Map,
+    pub player: crate::player::Player,
 }
 
 impl BadEnd {
@@ -61,53 +61,72 @@ impl BadEnd {
     }
 
     pub fn render(&mut self, ctx: StateContext) {
-        let viewport = *ctx.gfx.viewport();
+        let viewport = ctx.gfx.viewport().clone();
+        let (w, h) = ctx.aesthetic_canvas.dimensions();
+        let mut camera = super::Camera::new(w, h);
+        camera.for_map_with_scale(&self.map, &self.player, 1.);
+
         let geometry = self.map.batch.unmap(ctx.ctx);
+        const BLACK: Color = Color::new(0., 0., 0., 1.);
+
+        let mut quads = crate::Quads::new(&ctx.resources.sprites_metadata);
+        quads.add(
+            solstice_2d::Rectangle {
+                x: 0.0,
+                y: 0.0,
+                width: 256.,
+                height: 256.,
+            },
+            "boss_contrast.png",
+        );
 
         let mut g = ctx.gfx.lock(ctx.ctx);
-        g.clear(Color::new(0., 0., 0., 1.));
-
-        g.set_canvas(Some(ctx.canvas.clone()));
-        g.clear(Color::new(0., 0., 0., 1.));
+        g.clear(BLACK);
 
         {
-            let scale = 3.;
+            g.set_canvas(Some(ctx.canvas.clone()));
+            g.clear(BLACK);
+
             let [gw, gh] = self.map.grid.grid_size();
-            let [pw, ph] = [gw as f32 * 64., gh as f32 * 64.];
+            let [tw, th] = self.map.tile_size;
+            let (cw, ch) = ctx.canvas.dimensions();
+            let x = cw / (gw as f32 * tw);
+            let y = ch / (gh as f32 * th);
+            g.set_camera(solstice_2d::Transform2D::scale(x, y));
+            g.image(geometry, &ctx.resources.sprites);
 
-            let (player_x, player_y) = self.player.position();
-            let x = player_x - 256. * scale / 2.;
-            let y = player_y - 256. * scale / 2.;
-
-            let max_x = (pw - 256. * scale).max(0.);
-            let max_y = (ph - 256. * scale).max(0.);
-
-            let x = x.clamp(0., max_x);
-            let y = y.clamp(0., max_y);
-
-            let translation = solstice_2d::Transform2D::translation(-x, -y);
-            let scale = solstice_2d::Transform2D::scale(1. / scale, 1. / scale);
-            g.set_camera(scale * translation);
+            {
+                let (x, y) = self.player.position();
+                let rot = solstice_2d::Rad(ctx.time.as_secs_f32());
+                let tx = solstice_2d::Transform2D::translation(x, y);
+                let tx = tx * solstice_2d::Transform2D::rotation(rot);
+                g.draw_with_color_and_transform(
+                    solstice_2d::Circle {
+                        x: 0.,
+                        y: 0.,
+                        radius: self.map.tile_size[0] / 4.,
+                        segments: 4,
+                    },
+                    [0.6, 1., 0.4, 1.0],
+                    tx,
+                );
+            }
+            g.set_camera(solstice_2d::Transform2D::default());
         }
 
-        g.image(geometry, &ctx.resources.sprites);
+        g.set_canvas(Some(ctx.aesthetic_canvas.clone()));
+        g.clear(BLACK);
 
-        {
-            let (x, y) = self.player.position();
-            let rot = solstice_2d::Rad(ctx.time.as_secs_f32());
-            let tx = solstice_2d::Transform2D::translation(x, y);
-            let tx = tx * solstice_2d::Transform2D::rotation(rot);
-            g.draw_with_color_and_transform(
-                solstice_2d::Circle {
-                    x: 0.,
-                    y: 0.,
-                    radius: 64. / 4.,
-                    segments: 4,
-                },
-                [0.6, 1., 0.4, 1.0],
-                tx,
-            );
-        }
+        g.set_shader(Some(ctx.resources.shaders.menu.clone()));
+        g.image(
+            solstice_2d::Geometry::from(quads.clone()),
+            &ctx.resources.sprites,
+        );
+        g.set_shader(None);
+
+        g.set_camera(camera.transform);
+        let plane = solstice_2d::Plane::new(1., 1., 1, 1);
+        g.image(plane, ctx.canvas);
 
         g.set_camera(solstice_2d::Transform2D::default());
         g.set_canvas(None);
@@ -134,7 +153,7 @@ impl BadEnd {
                     width: d,
                     height: d,
                 },
-                ctx.canvas,
+                ctx.aesthetic_canvas,
             );
         }
     }

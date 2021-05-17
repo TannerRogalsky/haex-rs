@@ -48,6 +48,7 @@ struct Static {
     ctx: solstice_2d::solstice::Context,
     gfx: solstice_2d::Graphics,
     resources: resources::LoadedResources,
+    aesthetic_canvas: solstice_2d::Canvas,
     canvas: solstice_2d::Canvas,
     input_state: InputState,
     audio_ctx: audio::AudioContext,
@@ -64,6 +65,7 @@ impl Static {
             resources: &self.resources,
             ctx: &mut self.ctx,
             gfx: &mut self.gfx,
+            aesthetic_canvas: &self.aesthetic_canvas,
             canvas: &self.canvas,
             input_state: &self.input_state,
             audio_ctx: &mut self.audio_ctx,
@@ -101,40 +103,57 @@ impl Game {
         let mut gfx = solstice_2d::Graphics::new(&mut ctx, width, height)?;
         let resources = resources.try_into_loaded(&mut ctx, &mut gfx)?;
 
-        let canvas = solstice_2d::Canvas::new(&mut ctx, 256., 256.)?;
+        let aesthetic_canvas = solstice_2d::Canvas::with_settings(
+            &mut ctx,
+            solstice_2d::solstice::canvas::Settings {
+                width: 256,
+                height: 256,
+                with_depth: true,
+                ..Default::default()
+            },
+        )?;
+        let canvas = solstice_2d::Canvas::with_settings(
+            &mut ctx,
+            solstice_2d::solstice::canvas::Settings {
+                width: 1080,
+                height: 1080,
+                with_depth: false,
+                ..Default::default()
+            },
+        )?;
 
         let cron = cron::Cron::default();
 
-        // let maps = MapProgression {
-        //     settings: map::MapGenSettings {
-        //         width: 5,
-        //         height: 5,
-        //         programs: map::ProgramGenSettings { nop_slide_count: 0 },
-        //     },
-        //     exit: Some(ProgressionType::Standard(Box::new(MapProgression {
-        //         settings: map::MapGenSettings {
-        //             width: 7,
-        //             height: 7,
-        //             programs: map::ProgramGenSettings { nop_slide_count: 0 },
-        //         },
-        //         exit: Some(ProgressionType::Standard(Box::new(MapProgression {
-        //             settings: map::MapGenSettings {
-        //                 width: 10,
-        //                 height: 10,
-        //                 programs: map::ProgramGenSettings { nop_slide_count: 0 },
-        //             },
-        //             exit: Some(ProgressionType::BadEnding),
-        //         }))),
-        //     }))),
-        // };
         let maps = MapProgression {
             settings: map::MapGenSettings {
                 width: 5,
                 height: 5,
                 programs: map::ProgramGenSettings { nop_slide_count: 0 },
             },
-            exit: Some(ProgressionType::BadEnding),
+            exit: Some(ProgressionType::Standard(Box::new(MapProgression {
+                settings: map::MapGenSettings {
+                    width: 10,
+                    height: 10,
+                    programs: map::ProgramGenSettings { nop_slide_count: 0 },
+                },
+                exit: Some(ProgressionType::Standard(Box::new(MapProgression {
+                    settings: map::MapGenSettings {
+                        width: 10,
+                        height: 10,
+                        programs: map::ProgramGenSettings { nop_slide_count: 0 },
+                    },
+                    exit: Some(ProgressionType::BadEnding),
+                }))),
+            }))),
         };
+        // let maps = MapProgression {
+        //     settings: map::MapGenSettings {
+        //         width: 5,
+        //         height: 5,
+        //         programs: map::ProgramGenSettings { nop_slide_count: 0 },
+        //     },
+        //     exit: Some(ProgressionType::BadEnding),
+        // };
 
         let audio_ctx = audio::AudioContext::new();
 
@@ -144,6 +163,7 @@ impl Game {
                     ctx,
                     gfx,
                     resources,
+                    aesthetic_canvas,
                     canvas,
                     input_state: Default::default(),
                     audio_ctx,

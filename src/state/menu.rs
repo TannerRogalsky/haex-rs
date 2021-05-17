@@ -35,7 +35,7 @@ impl Menu {
         let mut g = ctx.gfx.lock(ctx.ctx);
         g.clear(BLACK);
 
-        g.set_canvas(Some(ctx.canvas.clone()));
+        g.set_canvas(Some(ctx.aesthetic_canvas.clone()));
         g.clear(BLACK);
         g.set_shader(Some(ctx.resources.shaders.menu.clone()));
         g.image(
@@ -168,7 +168,7 @@ impl Menu {
                     width: d,
                     height: d,
                 },
-                ctx.canvas,
+                ctx.aesthetic_canvas,
             );
         }
     }

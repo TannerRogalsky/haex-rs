@@ -1,12 +1,14 @@
 mod bad_end;
 mod main;
-mod main_to_main;
+// mod main_to_main;
 mod menu;
+mod rotate_transition;
 
 pub struct StateContext<'a> {
     pub resources: &'a crate::resources::LoadedResources,
     pub ctx: &'a mut solstice_2d::solstice::Context,
     pub gfx: &'a mut solstice_2d::Graphics,
+    pub aesthetic_canvas: &'a solstice_2d::Canvas,
     pub canvas: &'a solstice_2d::Canvas,
     pub input_state: &'a crate::InputState,
     pub audio_ctx: &'a mut crate::audio::AudioContext,
@@ -23,10 +25,52 @@ pub struct StateContext<'a> {
 //     seed: u64,
 // }
 
+pub struct Graph {
+    pub inner: crate::map::Graph,
+    pub longest_path: Vec<crate::map::Coord>,
+}
+
+impl Graph {
+    pub fn draw(&self, dx: f32, dy: f32, g: &mut solstice_2d::GraphicsLock) {
+        let circle = solstice_2d::Circle {
+            radius: dx * 0.2,
+            segments: 6,
+            ..Default::default()
+        };
+        let mut traversal = petgraph::visit::Bfs::new(&self.inner, (0, 0));
+        while let Some((x, y)) = traversal.next(&self.inner) {
+            let color = if self.longest_path.contains(&(x, y)) {
+                [1., 1., 1., 1.]
+            } else {
+                [0., 0., 0., 1.]
+            };
+
+            let (tx, ty) = ((x as f32 + 0.5) * dx, (y as f32 + 0.5) * dy);
+            for (nx, ny) in self.inner.neighbors((x, y)) {
+                let (ntx, nty) = ((nx as f32 + 0.5) * dx, (ny as f32 + 0.5) * dy);
+                g.line_2d(vec![
+                    solstice_2d::LineVertex {
+                        position: [tx, ty, 0.],
+                        width: 2.,
+                        color,
+                    },
+                    solstice_2d::LineVertex {
+                        position: [ntx, nty, 0.],
+                        width: 2.,
+                        color,
+                    },
+                ]);
+            }
+            let transform = solstice_2d::Transform2D::translation(tx, ty);
+            use solstice_2d::Draw;
+            g.draw_with_color_and_transform(circle, color, transform);
+        }
+    }
+}
+
 pub struct NavigableMap {
     pub inner: Map,
-    pub graph: crate::map::Graph,
-    pub longest_path: Vec<crate::map::Coord>,
+    pub graph: Graph,
 }
 
 impl NavigableMap {
@@ -61,44 +105,10 @@ impl NavigableMap {
 
         Self {
             inner: map,
-            graph,
-            longest_path,
-        }
-    }
-
-    pub fn draw_graph(&self, dx: f32, dy: f32, g: &mut solstice_2d::GraphicsLock) {
-        let circle = solstice_2d::Circle {
-            radius: dx * 0.2,
-            segments: 6,
-            ..Default::default()
-        };
-        let mut traversal = petgraph::visit::Bfs::new(&self.graph, (0, 0));
-        while let Some((x, y)) = traversal.next(&self.graph) {
-            let color = if self.longest_path.contains(&(x, y)) {
-                [1., 1., 1., 1.]
-            } else {
-                [0., 0., 0., 1.]
-            };
-
-            let (tx, ty) = ((x as f32 + 0.5) * dx, (y as f32 + 0.5) * dy);
-            for (nx, ny) in self.graph.neighbors((x, y)) {
-                let (ntx, nty) = ((nx as f32 + 0.5) * dx, (ny as f32 + 0.5) * dy);
-                g.line_2d(vec![
-                    solstice_2d::LineVertex {
-                        position: [tx, ty, 0.],
-                        width: 2.,
-                        color,
-                    },
-                    solstice_2d::LineVertex {
-                        position: [ntx, nty, 0.],
-                        width: 2.,
-                        color,
-                    },
-                ]);
-            }
-            let transform = solstice_2d::Transform2D::translation(tx, ty);
-            use solstice_2d::Draw;
-            g.draw_with_color_and_transform(circle, color, transform);
+            graph: Graph {
+                inner: graph,
+                longest_path,
+            },
         }
     }
 }
@@ -164,8 +174,9 @@ impl Map {
 pub enum State {
     Menu(menu::Menu),
     Main(main::Main),
-    MainToMain(main_to_main::MainToMain),
+    MainToMain(rotate_transition::RotateTransition<main::Main, main::Main>),
     BadEnd(bad_end::BadEnd),
+    MainToBadEnd(rotate_transition::RotateTransition<main::Main, bad_end::BadEnd>),
 }
 
 impl State {
@@ -174,12 +185,19 @@ impl State {
     }
 
     pub fn update(self, dt: std::time::Duration, ctx: StateContext) -> Self {
-        match self {
+        let ty = std::mem::discriminant(&self);
+        let next = match self {
             State::Main(main) => main.update(dt, ctx),
             State::MainToMain(inner) => inner.update(dt, ctx),
             State::BadEnd(inner) => inner.update(dt, ctx),
+            State::MainToBadEnd(inner) => inner.update(dt, ctx),
             _ => self,
+        };
+        let next_ty = std::mem::discriminant(&next);
+        if ty != next_ty {
+            log::debug!("State Transition: {:?} => {:?}", ty, next_ty);
         }
+        next
     }
 
     pub fn render(&mut self, ctx: StateContext) {
@@ -188,6 +206,7 @@ impl State {
             State::Main(main) => main.render(ctx),
             State::MainToMain(inner) => inner.render(ctx),
             State::BadEnd(inner) => inner.render(ctx),
+            State::MainToBadEnd(inner) => inner.render(ctx),
         }
     }
 
@@ -201,6 +220,7 @@ impl State {
             State::Main(_) => {}
             State::MainToMain(_) => {}
             State::BadEnd(_) => {}
+            State::MainToBadEnd(_) => {}
         }
     }
 
@@ -219,6 +239,78 @@ impl State {
             State::Main(_) => {}
             State::MainToMain(_) => {}
             State::BadEnd(_) => {}
+            State::MainToBadEnd(_) => {}
+        }
+    }
+}
+
+use camera::Camera;
+mod camera {
+    pub struct Camera {
+        pub screen_dimension: [f32; 2],
+        pub projection: solstice_2d::Perspective,
+        pub transform: solstice_2d::Transform3D,
+    }
+
+    impl Camera {
+        pub fn new(screen_width: f32, screen_height: f32) -> Self {
+            Self {
+                screen_dimension: [screen_width, screen_height],
+                projection: solstice_2d::Perspective {
+                    aspect: screen_width / screen_height,
+                    fovy: std::f32::consts::FRAC_PI_2,
+                    near: 0.1,
+                    far: 1000.0,
+                },
+                transform: Default::default(),
+            }
+        }
+
+        pub fn viewport(&mut self, x: f32, y: f32, size: f32) {
+            let [w, h] = self.screen_dimension;
+            let screen_size = w.max(h);
+            let ratio = size / screen_size;
+            let z = -0.5 / ratio;
+            let x = x / w / ratio;
+            let y = y / h / ratio;
+
+            let rot = solstice_2d::Transform3D::rotation(
+                solstice_2d::Rad(0.),
+                solstice_2d::Rad(0.),
+                solstice_2d::Rad(std::f32::consts::PI),
+            );
+            self.transform = solstice_2d::Transform3D::translation(x, y, z) * rot;
+        }
+
+        pub fn for_map_with_scale(
+            &mut self,
+            map: &crate::state::Map,
+            player: &crate::player::Player,
+            scale: f32,
+        ) {
+            let [sw, sh] = self.screen_dimension;
+            let [gw, gh] = map.grid.grid_size();
+            let [tw, th] = map.tile_size;
+            let [pw, ph] = [gw as f32 * tw * scale, gh as f32 * th * scale];
+            let camera_should_follow = pw > sw || ph > sh;
+
+            if camera_should_follow {
+                let (player_x, player_y) = player.position();
+
+                let x = player_x.clamp(sw / 2. - tw, pw - sw / 2. + tw);
+                let y = player_y.clamp(sh / 2. - th, ph - sh / 2. + th);
+
+                let x = x - pw / 2.;
+                let y = y - ph / 2.;
+
+                self.viewport(x, y, pw.max(ph));
+            } else {
+                self.viewport(0., 0., pw.max(ph));
+            }
+        }
+
+        pub fn for_map(&mut self, map: &crate::state::Map, player: &crate::player::Player) {
+            self.for_map_with_scale(map, player, 1.);
         }
     }
 }

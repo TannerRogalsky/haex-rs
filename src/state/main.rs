@@ -27,7 +27,7 @@ impl Main {
         let map = NavigableMap::with_map(map);
 
         let player = {
-            let start = map.longest_path[0];
+            let start = map.graph.longest_path[0];
             let (x, y) = map.inner.coord_to_mid_pixel(start);
             crate::player::Player::new(x, y)
         };
@@ -74,7 +74,7 @@ impl Main {
         {
             // player is at exit
             let grid_pos = self.map.inner.pixel_to_coord(self.player.position());
-            if let Some(target) = self.map.longest_path.last().copied() {
+            if let Some(target) = self.map.graph.longest_path.last().copied() {
                 if grid_pos == target {
                     let seed = ctx.time.as_millis() as u64;
                     if let Some(progression) = &self.progression.exit {
@@ -83,17 +83,26 @@ impl Main {
                                 if let Ok(to) =
                                     Self::with_seed(&mut ctx, seed, (**settings).clone())
                                 {
-                                    return State::MainToMain(super::main_to_main::MainToMain {
-                                        from: self,
-                                        to,
-                                        time: std::time::Duration::from_secs_f32(3.),
-                                        elapsed: Default::default(),
-                                    });
+                                    return State::MainToMain(
+                                        super::rotate_transition::RotateTransition {
+                                            from: self,
+                                            to,
+                                            time: std::time::Duration::from_secs_f32(3.),
+                                            elapsed: Default::default(),
+                                        },
+                                    );
                                 }
                             }
                             ProgressionType::BadEnding => {
                                 return match super::bad_end::BadEnd::new(ctx) {
-                                    Ok(state) => State::BadEnd(state),
+                                    Ok(to) => State::MainToBadEnd(
+                                        super::rotate_transition::RotateTransition {
+                                            from: self,
+                                            to,
+                                            elapsed: Default::default(),
+                                            time: std::time::Duration::from_secs_f32(3.),
+                                        },
+                                    ),
                                     Err(err) => {
                                         log::error!("Error transitioning to BadEnd: {}", err);
                                         State::Menu(super::menu::Menu::new())
@@ -123,7 +132,11 @@ impl Main {
 
     pub fn render(&mut self, ctx: StateContext) {
         let viewport = ctx.gfx.viewport().clone();
-        let map = self.map.inner.batch.unmap(ctx.ctx);
+        let (w, h) = ctx.aesthetic_canvas.dimensions();
+        let mut camera = super::Camera::new(w, h);
+        camera.for_map(&self.map.inner, &self.player);
+
+        let geometry = self.map.inner.batch.unmap(ctx.ctx);
         const BLACK: Color = Color::new(0., 0., 0., 1.);
 
         let mut quads = crate::Quads::new(&ctx.resources.sprites_metadata);
@@ -140,7 +153,43 @@ impl Main {
         let mut g = ctx.gfx.lock(ctx.ctx);
         g.clear(BLACK);
 
-        g.set_canvas(Some(ctx.canvas.clone()));
+        {
+            g.set_canvas(Some(ctx.canvas.clone()));
+            g.clear(BLACK);
+
+            let [gw, gh] = self.map.inner.grid.grid_size();
+            let [tw, th] = self.map.inner.tile_size;
+            let (cw, ch) = ctx.canvas.dimensions();
+            let x = cw / (gw as f32 * tw);
+            let y = ch / (gh as f32 * th);
+            g.set_camera(solstice_2d::Transform2D::scale(x, y));
+            g.image(geometry, &ctx.resources.sprites);
+
+            {
+                let [w, h] = self.map.inner.tile_size;
+                self.map.graph.draw(w, h, &mut g);
+            }
+
+            {
+                let (x, y) = self.player.position();
+                let rot = solstice_2d::Rad(ctx.time.as_secs_f32());
+                let tx = solstice_2d::Transform2D::translation(x, y);
+                let tx = tx * solstice_2d::Transform2D::rotation(rot);
+                g.draw_with_color_and_transform(
+                    solstice_2d::Circle {
+                        x: 0.,
+                        y: 0.,
+                        radius: self.map.inner.tile_size[0] / 4.,
+                        segments: 4,
+                    },
+                    [0.6, 1., 0.4, 1.0],
+                    tx,
+                );
+            }
+            g.set_camera(solstice_2d::Transform2D::default());
+        }
+
+        g.set_canvas(Some(ctx.aesthetic_canvas.clone()));
         g.clear(BLACK);
 
         g.set_shader(Some(ctx.resources.shaders.menu.clone()));
@@ -150,51 +199,9 @@ impl Main {
         );
         g.set_shader(None);
 
-        let [gw, gh] = self.map.inner.grid.grid_size();
-        let [tw, th] = self.map.inner.tile_size;
-        let [pw, ph] = [gw as f32 * tw, gh as f32 * th];
-        let camera_should_follow = pw > 256. || ph > 256.;
-
-        let camera = if camera_should_follow {
-            let (player_x, player_y) = self.player.position();
-            let x = player_x - 256. / 2.;
-            let y = player_y - 256. / 2.;
-
-            let max_x = (pw - 256.).max(0.);
-            let max_y = (ph - 256.).max(0.);
-
-            let x = x.clamp(0., max_x);
-            let y = y.clamp(0., max_y);
-            solstice_2d::Transform2D::translation(-x, -y)
-        } else {
-            let x = 256. / 2. - pw / 2.;
-            let y = 256. / 2. - ph / 2.;
-            solstice_2d::Transform2D::translation(x, y)
-        };
-        g.set_camera(camera);
-        g.image(map, &ctx.resources.sprites);
-
-        // {
-        //     let [w, h] = self.map.inner.tile_size;
-        //     self.map.draw_graph(w, h, &mut g);
-        // }
-
-        {
-            let (x, y) = self.player.position();
-            let rot = solstice_2d::Rad(ctx.time.as_secs_f32());
-            let tx = solstice_2d::Transform2D::translation(x, y);
-            let tx = tx * solstice_2d::Transform2D::rotation(rot);
-            g.draw_with_color_and_transform(
-                solstice_2d::Circle {
-                    x: 0.,
-                    y: 0.,
-                    radius: self.map.inner.tile_size[0] / 4.,
-                    segments: 4,
-                },
-                [0.6, 1., 0.4, 1.0],
-                tx,
-            );
-        }
+        g.set_camera(camera.transform);
+        let plane = solstice_2d::Plane::new(1., 1., 1, 1);
+        g.image(plane, ctx.canvas);
 
         g.set_camera(solstice_2d::Transform2D::default());
         g.set_canvas(None);
@@ -221,7 +228,7 @@ impl Main {
                     width: d,
                     height: d,
                 },
-                ctx.canvas,
+                ctx.aesthetic_canvas,
             );
         }
     }
