@@ -1,8 +1,9 @@
 mod bad_end;
 mod main;
-// mod main_to_main;
 mod menu;
 mod rotate_transition;
+
+use camera::Camera;
 
 pub struct StateContext<'a, 'b, 'c> {
     pub resources: &'a crate::resources::LoadedResources,
@@ -116,7 +117,11 @@ impl NavigableMap {
     }
 }
 
-fn overlay<'a>(ctx: &mut StateContext<'_, '_, 'a>, map: &'a Map, player: &'a Player) {
+fn overlay<'a>(
+    ctx: &mut StateContext<'_, '_, 'a>,
+    map: &'a Map,
+    player: &'a crate::player::Player,
+) {
     use solstice_2d::Draw;
 
     let [tw, th] = map.tile_size;
@@ -136,49 +141,42 @@ fn overlay<'a>(ctx: &mut StateContext<'_, '_, 'a>, map: &'a Map, player: &'a Pla
 
     let (px, py) = map.pixel_to_coord(player.position());
 
-    let vertices =
-        map
-            .seen
-            .iter()
-            .filter_map(|(seen, (x, y))| {
-                use solstice_2d::solstice::{quad_batch::Quad, viewport::Viewport};
-                if *seen {
-                    let d = (px as i32 - x as i32).abs() + (py as i32 - y as i32);
-                    if d <= 2 {
-                        None
-                    } else {
-                        let (px, py) = map.coord_to_mid_pixel((x, y));
-                        let vertices =
-                            Quad::from(Viewport::new(px - half_w, py - half_h, tw, th))
-                                .map(|(x, y)| solstice_2d::Vertex2D {
-                                    position: [x, y],
-                                    color: [0.2, 0.2, 0.2, 0.7],
-                                    uv: [u1, v1],
-                                });
-                        Some(std::array::IntoIter::new(vertices.vertices))
-                    }
+    let vertices = map
+        .seen
+        .iter()
+        .filter_map(|(seen, (x, y))| {
+            use solstice_2d::solstice::{quad_batch::Quad, viewport::Viewport};
+            if *seen {
+                let d = (px as i32 - x as i32).abs() + (py as i32 - y as i32).abs();
+                if d <= 2 {
+                    None
                 } else {
                     let (px, py) = map.coord_to_mid_pixel((x, y));
-                    let positions =
-                        Quad::from(Viewport::new(px - half_w, py - half_h, tw, th));
-                    let uvs = Quad::from(Viewport::new(
-                        u1 + u * x as f32,
-                        v1 + v * y as f32,
-                        u,
-                        v,
-                    ));
-                    let vertices = positions.zip(uvs).map(|((x, y), (u, v))| {
-                        solstice_2d::Vertex2D {
+                    let vertices = Quad::from(Viewport::new(px - half_w, py - half_h, tw, th)).map(
+                        |(x, y)| solstice_2d::Vertex2D {
                             position: [x, y],
-                            color: [1., 1., 1., 1.],
-                            uv: [u, v],
-                        }
-                    });
+                            color: [0.2, 0.2, 0.2, 0.7],
+                            uv: [u1, v1],
+                        },
+                    );
                     Some(std::array::IntoIter::new(vertices.vertices))
                 }
-            })
-            .flatten()
-            .collect::<Vec<_>>();
+            } else {
+                let (px, py) = map.coord_to_mid_pixel((x, y));
+                let positions = Quad::from(Viewport::new(px - half_w, py - half_h, tw, th));
+                let uvs = Quad::from(Viewport::new(u1 + u * x as f32, v1 + v * y as f32, u, v));
+                let vertices = positions
+                    .zip(uvs)
+                    .map(|((x, y), (u, v))| solstice_2d::Vertex2D {
+                        position: [x, y],
+                        color: [1., 1., 1., 1.],
+                        uv: [u, v],
+                    });
+                Some(std::array::IntoIter::new(vertices.vertices))
+            }
+        })
+        .flatten()
+        .collect::<Vec<_>>();
     let indices = (0..(vertices.len() / 4))
         .flat_map(|i| {
             let offset = i as u32 * 4;
@@ -190,7 +188,7 @@ fn overlay<'a>(ctx: &mut StateContext<'_, '_, 'a>, map: &'a Map, player: &'a Pla
 }
 
 impl DrawableMap for NavigableMap {
-    fn render<'a>(&'a self, player: &'a Player, ctx: &mut StateContext<'_, '_, 'a>) {
+    fn render<'a>(&'a self, player: &'a crate::player::Player, ctx: &mut StateContext<'_, '_, 'a>) {
         use solstice_2d::Draw;
 
         self.inner.draw(ctx);
@@ -235,7 +233,7 @@ impl DrawableMap for NavigableMap {
 }
 
 impl DrawableMap for Map {
-    fn render<'a>(&'a self, player: &'a Player, ctx: &mut StateContext<'_, '_, 'a>) {
+    fn render<'a>(&'a self, player: &'a crate::player::Player, ctx: &mut StateContext<'_, '_, 'a>) {
         use solstice_2d::Draw;
 
         self.draw(ctx);
@@ -294,7 +292,8 @@ impl Map {
             &map,
             &ctx.resources.sprites_metadata,
         );
-        let mut sp = solstice_2d::solstice::quad_batch::QuadBatch::new(ctx.g.ctx_mut(), batch.len())?;
+        let mut sp =
+            solstice_2d::solstice::quad_batch::QuadBatch::new(ctx.g.ctx_mut(), batch.len())?;
         for quad in batch {
             sp.push(quad);
         }
@@ -410,9 +409,6 @@ impl State {
         }
     }
 }
-
-use camera::Camera;
-use crate::player::Player;
 
 mod camera {
     pub struct Camera {

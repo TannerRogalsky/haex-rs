@@ -76,7 +76,7 @@ impl Main {
             let (px, py) = self.map.inner.pixel_to_coord(self.player.position());
             for x in (px.saturating_sub(2))..=(px + 2) {
                 for y in (py.saturating_sub(2))..=(py + 2) {
-                    let d = (px as i32 - x as i32).abs() + (py as i32 - y as i32);
+                    let d = (px as i32 - x as i32).abs() + (py as i32 - y as i32).abs();
                     if d <= 2 {
                         if let Some(index) = self.map.inner.seen.checked_coord_to_index((x, y)) {
                             self.map.inner.seen.data[index] = true;

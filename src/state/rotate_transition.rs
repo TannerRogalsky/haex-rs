@@ -2,7 +2,11 @@ use super::{bad_end::BadEnd, main::Main, State, StateContext};
 use crate::{player::Player, state::Map};
 use solstice_2d::{Color, Draw};
 
-fn render<'a>(mut ctx: StateContext<'_, '_, 'a>, ratio: f32, states: [(&'a mut Map, &'a Player); 2]) {
+fn render<'a>(
+    mut ctx: StateContext<'_, '_, 'a>,
+    ratio: f32,
+    states: [(&'a mut Map, &'a Player); 2],
+) {
     let viewport = ctx.g.gfx().viewport().clone();
 
     let (w, h) = ctx.aesthetic_canvas.dimensions();
