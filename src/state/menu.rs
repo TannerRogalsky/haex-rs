@@ -17,7 +17,7 @@ impl Menu {
         }
     }
 
-    pub fn render(&mut self, ctx: StateContext) {
+    pub fn render<'a>(&'a mut self, mut ctx: StateContext<'_, '_, 'a>) {
         let mut quads = crate::Quads::new(&ctx.resources.sprites_metadata);
         quads.add(
             Rectangle {
@@ -29,10 +29,10 @@ impl Menu {
             "boss_contrast.png",
         );
 
-        let viewport = ctx.gfx.viewport().clone();
+        let viewport = ctx.g.ctx_mut().viewport().clone();
         const BLACK: Color = Color::new(0., 0., 0., 1.);
 
-        let mut g = ctx.gfx.lock(ctx.ctx);
+        let g = &mut ctx.g;
         g.clear(BLACK);
 
         g.set_canvas(Some(ctx.aesthetic_canvas.clone()));
@@ -234,7 +234,7 @@ impl Menu {
                                     ctx.audio_ctx.play_new(ctx.resources.music.clone()).ok();
                                 ctx.audio_ctx.set_global_volume(0.);
                             }
-                            let viewport = ctx.gfx.viewport();
+                            let viewport = ctx.g.gfx().viewport();
                             let mouse =
                                 Self::mouse_on_canvas(ctx.input_state.mouse_position, *viewport);
                             let radius = 50.;
@@ -253,7 +253,7 @@ impl Menu {
             }
             MouseEvent::Moved(x, y) => {
                 if self.volume_clicked {
-                    let viewport = ctx.gfx.viewport();
+                    let viewport = ctx.g.gfx().viewport();
                     let [x, _] = Self::mouse_on_canvas((x, y), *viewport);
                     let radius = 50.;
                     let center = 256. / 2.;

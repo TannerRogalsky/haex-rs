@@ -5,8 +5,8 @@ use crate::{
     CronContext,
 };
 
-pub struct StateMut<'a, 'b> {
-    pub ctx: &'a mut StateContext<'b>,
+pub struct StateMut<'a, 'b, 'c, 'd> {
+    pub ctx: &'a mut StateContext<'b, 'c, 'd>,
     pub player: &'a mut Player,
     pub map: &'a mut Map,
 }

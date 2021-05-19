@@ -4,10 +4,9 @@ mod main;
 mod menu;
 mod rotate_transition;
 
-pub struct StateContext<'a> {
+pub struct StateContext<'a, 'b, 'c> {
     pub resources: &'a crate::resources::LoadedResources,
-    pub ctx: &'a mut solstice_2d::solstice::Context,
-    pub gfx: &'a mut solstice_2d::Graphics,
+    pub g: solstice_2d::GraphicsLock<'b, 'c>,
     pub aesthetic_canvas: &'a solstice_2d::Canvas,
     pub canvas: &'a solstice_2d::Canvas,
     pub input_state: &'a crate::InputState,
@@ -68,6 +67,10 @@ impl Graph {
     }
 }
 
+pub trait DrawableMap {
+    fn render<'a>(&'a self, player: &'a crate::player::Player, ctx: &mut StateContext<'_, '_, 'a>);
+}
+
 pub struct NavigableMap {
     pub inner: Map,
     pub graph: Graph,
@@ -113,10 +116,156 @@ impl NavigableMap {
     }
 }
 
+fn overlay<'a>(ctx: &mut StateContext<'_, '_, 'a>, map: &'a Map, player: &'a Player) {
+    use solstice_2d::Draw;
+
+    let [tw, th] = map.tile_size;
+    let [half_w, half_h] = [tw / 2., th / 2.];
+
+    let uv_bounds = ctx
+        .resources
+        .sprites_metadata
+        .get("boss_contrast.png")
+        .unwrap();
+    let (u1, v1) = uv_bounds.vertices[0];
+    let (u2, v2) = uv_bounds.vertices[3];
+    let (uw, uh) = (u2 - u1, v2 - v1);
+
+    let u = uw / map.grid.width as f32;
+    let v = uh / map.grid.height as f32;
+
+    let (px, py) = map.pixel_to_coord(player.position());
+
+    let vertices =
+        map
+            .seen
+            .iter()
+            .filter_map(|(seen, (x, y))| {
+                use solstice_2d::solstice::{quad_batch::Quad, viewport::Viewport};
+                if *seen {
+                    let d = (px as i32 - x as i32).abs() + (py as i32 - y as i32);
+                    if d <= 2 {
+                        None
+                    } else {
+                        let (px, py) = map.coord_to_mid_pixel((x, y));
+                        let vertices =
+                            Quad::from(Viewport::new(px - half_w, py - half_h, tw, th))
+                                .map(|(x, y)| solstice_2d::Vertex2D {
+                                    position: [x, y],
+                                    color: [0.2, 0.2, 0.2, 0.7],
+                                    uv: [u1, v1],
+                                });
+                        Some(std::array::IntoIter::new(vertices.vertices))
+                    }
+                } else {
+                    let (px, py) = map.coord_to_mid_pixel((x, y));
+                    let positions =
+                        Quad::from(Viewport::new(px - half_w, py - half_h, tw, th));
+                    let uvs = Quad::from(Viewport::new(
+                        u1 + u * x as f32,
+                        v1 + v * y as f32,
+                        u,
+                        v,
+                    ));
+                    let vertices = positions.zip(uvs).map(|((x, y), (u, v))| {
+                        solstice_2d::Vertex2D {
+                            position: [x, y],
+                            color: [1., 1., 1., 1.],
+                            uv: [u, v],
+                        }
+                    });
+                    Some(std::array::IntoIter::new(vertices.vertices))
+                }
+            })
+            .flatten()
+            .collect::<Vec<_>>();
+    let indices = (0..(vertices.len() / 4))
+        .flat_map(|i| {
+            let offset = i as u32 * 4;
+            std::array::IntoIter::new([0, 1, 2, 2, 1, 3]).map(move |i| i + offset)
+        })
+        .collect::<Vec<_>>();
+    let geometry = solstice_2d::Geometry::new(vertices, Some(indices));
+    ctx.g.image(geometry, &ctx.resources.sprites);
+}
+
+impl DrawableMap for NavigableMap {
+    fn render<'a>(&'a self, player: &'a Player, ctx: &mut StateContext<'_, '_, 'a>) {
+        use solstice_2d::Draw;
+
+        self.inner.draw(ctx);
+
+        if let Some(end) = self.graph.longest_path.last().copied() {
+            let (x, y) = self.inner.coord_to_mid_pixel(end);
+            ctx.g.draw_with_color(
+                solstice_2d::Circle {
+                    x,
+                    y,
+                    radius: self.inner.tile_size[0] / 4.,
+                    segments: 20,
+                },
+                [0.3, 0.2, 0.8, 1.],
+            );
+        }
+
+        {
+            let (x, y) = player.position();
+            let rot = solstice_2d::Rad(ctx.time.as_secs_f32());
+            let tx = solstice_2d::Transform2D::translation(x, y);
+            let tx = tx * solstice_2d::Transform2D::rotation(rot);
+            ctx.g.draw_with_color_and_transform(
+                solstice_2d::Circle {
+                    x: 0.,
+                    y: 0.,
+                    radius: self.inner.tile_size[0] / 4.,
+                    segments: 4,
+                },
+                [0.6, 1., 0.4, 1.0],
+                tx,
+            );
+        }
+
+        overlay(ctx, &self.inner, player);
+
+        if cfg!(debug_assertions) {
+            let [w, h] = self.inner.tile_size;
+            self.graph.draw(w, h, &mut ctx.g);
+        }
+    }
+}
+
+impl DrawableMap for Map {
+    fn render<'a>(&'a self, player: &'a Player, ctx: &mut StateContext<'_, '_, 'a>) {
+        use solstice_2d::Draw;
+
+        self.draw(ctx);
+
+        {
+            let (x, y) = player.position();
+            let rot = solstice_2d::Rad(ctx.time.as_secs_f32());
+            let tx = solstice_2d::Transform2D::translation(x, y);
+            let tx = tx * solstice_2d::Transform2D::rotation(rot);
+            ctx.g.draw_with_color_and_transform(
+                solstice_2d::Circle {
+                    x: 0.,
+                    y: 0.,
+                    radius: self.tile_size[0] / 4.,
+                    segments: 4,
+                },
+                [0.6, 1., 0.4, 1.0],
+                tx,
+            );
+        }
+
+        overlay(ctx, self, player);
+    }
+}
+
 pub struct Map {
-    pub grid: crate::map::Grid,
+    pub grid: crate::map::DirectionGrid,
     pub batch: solstice_2d::solstice::quad_batch::QuadBatch<solstice_2d::Vertex2D>,
     pub tile_size: [f32; 2],
+    pub seen: crate::map::Grid<bool>,
 }
 
 impl Map {
@@ -145,7 +294,7 @@ impl Map {
             &map,
             &ctx.resources.sprites_metadata,
         );
-        let mut sp = solstice_2d::solstice::quad_batch::QuadBatch::new(ctx.ctx, batch.len())?;
+        let mut sp = solstice_2d::solstice::quad_batch::QuadBatch::new(ctx.g.ctx_mut(), batch.len())?;
         for quad in batch {
             sp.push(quad);
         }
@@ -153,6 +302,11 @@ impl Map {
             grid: map,
             batch: sp,
             tile_size: [tile_width, tile_height],
+            seen: crate::map::Grid {
+                data: vec![false; width * height].into_boxed_slice(),
+                width,
+                height,
+            },
         })
     }
 
@@ -168,6 +322,19 @@ impl Map {
         let x = (x / self.tile_size[0]).floor() as usize;
         let y = (y / self.tile_size[1]).floor() as usize;
         (x, y)
+    }
+
+    pub fn draw<'a>(&'a self, ctx: &mut StateContext<'_, '_, 'a>) {
+        use solstice_2d::Draw;
+
+        let [gw, gh] = self.grid.grid_size();
+        let [tw, th] = self.tile_size;
+        let (cw, ch) = ctx.canvas.dimensions();
+        let x = cw / (gw as f32 * tw);
+        let y = ch / (gh as f32 * th);
+        ctx.g.set_camera(solstice_2d::Transform2D::scale(x, y));
+        // self.batch.unmap(ctx.g.ctx_mut());
+        ctx.g.image(self.batch.geometry(), &ctx.resources.sprites);
     }
 }
 
@@ -245,6 +412,8 @@ impl State {
 }
 
 use camera::Camera;
+use crate::player::Player;
+
 mod camera {
     pub struct Camera {
         pub screen_dimension: [f32; 2],

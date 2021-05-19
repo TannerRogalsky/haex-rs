@@ -60,11 +60,10 @@ impl Static {
     pub fn as_ctx<'a>(
         &'a mut self,
         cron: &'a mut cron::Cron<CronContext>,
-    ) -> state::StateContext<'a> {
+    ) -> state::StateContext<'a, '_, '_> {
         state::StateContext {
             resources: &self.resources,
-            ctx: &mut self.ctx,
-            gfx: &mut self.gfx,
+            g: self.gfx.lock(&mut self.ctx),
             aesthetic_canvas: &self.aesthetic_canvas,
             canvas: &self.canvas,
             input_state: &self.input_state,

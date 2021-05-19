@@ -24,7 +24,8 @@ impl Main {
     ) -> Result<Self, solstice_2d::GraphicsError> {
         let crate::map::MapGenSettings { width, height, .. } = settings.settings;
         let map = super::Map::with_seed(width, height, seed, ctx)?;
-        let map = NavigableMap::with_map(map);
+        let mut map = NavigableMap::with_map(map);
+        map.inner.batch.unmap(ctx.g.ctx_mut());
 
         let player = {
             let start = map.graph.longest_path[0];
@@ -70,6 +71,20 @@ impl Main {
         }
 
         self.player.update(dt);
+
+        {
+            let (px, py) = self.map.inner.pixel_to_coord(self.player.position());
+            for x in (px.saturating_sub(2))..=(px + 2) {
+                for y in (py.saturating_sub(2))..=(py + 2) {
+                    let d = (px as i32 - x as i32).abs() + (py as i32 - y as i32);
+                    if d <= 2 {
+                        if let Some(index) = self.map.inner.seen.checked_coord_to_index((x, y)) {
+                            self.map.inner.seen.data[index] = true;
+                        }
+                    }
+                }
+            }
+        }
 
         {
             // player is at exit
@@ -126,17 +141,17 @@ impl Main {
                 self.active_program = Some(r.callback);
             }
         }
+        self.map.inner.batch.unmap(ctx.g.ctx_mut());
 
         State::Main(self)
     }
 
-    pub fn render(&mut self, ctx: StateContext) {
-        let viewport = ctx.gfx.viewport().clone();
+    pub fn render<'a>(&'a mut self, mut ctx: StateContext<'_, '_, 'a>) {
+        let viewport = ctx.g.ctx_mut().viewport().clone();
         let (w, h) = ctx.aesthetic_canvas.dimensions();
         let mut camera = super::Camera::new(w, h);
         camera.for_map(&self.map.inner, &self.player);
 
-        let geometry = self.map.inner.batch.unmap(ctx.ctx);
         const BLACK: Color = Color::new(0., 0., 0., 1.);
 
         let mut quads = crate::Quads::new(&ctx.resources.sprites_metadata);
@@ -150,45 +165,18 @@ impl Main {
             "boss_contrast.png",
         );
 
-        let mut g = ctx.gfx.lock(ctx.ctx);
-        g.clear(BLACK);
+        ctx.g.clear(BLACK);
 
         {
-            g.set_canvas(Some(ctx.canvas.clone()));
-            g.clear(BLACK);
+            ctx.g.set_canvas(Some(ctx.canvas.clone()));
+            ctx.g.clear(BLACK);
 
-            let [gw, gh] = self.map.inner.grid.grid_size();
-            let [tw, th] = self.map.inner.tile_size;
-            let (cw, ch) = ctx.canvas.dimensions();
-            let x = cw / (gw as f32 * tw);
-            let y = ch / (gh as f32 * th);
-            g.set_camera(solstice_2d::Transform2D::scale(x, y));
-            g.image(geometry, &ctx.resources.sprites);
-
-            {
-                let [w, h] = self.map.inner.tile_size;
-                self.map.graph.draw(w, h, &mut g);
-            }
-
-            {
-                let (x, y) = self.player.position();
-                let rot = solstice_2d::Rad(ctx.time.as_secs_f32());
-                let tx = solstice_2d::Transform2D::translation(x, y);
-                let tx = tx * solstice_2d::Transform2D::rotation(rot);
-                g.draw_with_color_and_transform(
-                    solstice_2d::Circle {
-                        x: 0.,
-                        y: 0.,
-                        radius: self.map.inner.tile_size[0] / 4.,
-                        segments: 4,
-                    },
-                    [0.6, 1., 0.4, 1.0],
-                    tx,
-                );
-            }
-            g.set_camera(solstice_2d::Transform2D::default());
+            use super::DrawableMap;
+            self.map.render(&self.player, &mut ctx);
+            ctx.g.set_camera(solstice_2d::Transform2D::default());
         }
 
+        let g = &mut ctx.g;
         g.set_canvas(Some(ctx.aesthetic_canvas.clone()));
         g.clear(BLACK);
 

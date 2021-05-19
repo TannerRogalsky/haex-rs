@@ -51,13 +51,50 @@ fn d1_to_d2(index: usize, width: usize) -> Coord {
 }
 
 #[derive(Debug)]
-pub struct Grid {
-    pub data: Box<[BitFlags<Direction>]>,
+pub struct Grid<T> {
+    pub data: Box<[T]>,
     pub width: usize,
     pub height: usize,
 }
 
-impl Grid {
+impl<T> Grid<T> {
+    pub fn grid_size(&self) -> [usize; 2] {
+        [self.width, self.height]
+    }
+
+    pub fn contains(&self, coord: Coord) -> bool {
+        let (x, y) = coord;
+        x < self.width && y < self.height
+    }
+
+    pub fn coord_to_index(&self, coord: Coord) -> usize {
+        coord.0 + coord.1 * self.width
+    }
+
+    pub fn checked_coord_to_index(&self, coord: Coord) -> Option<usize> {
+        if coord.0 < self.width && coord.1 < self.height {
+            Some(self.coord_to_index(coord))
+        } else {
+            None
+        }
+    }
+
+    pub fn index_to_coord(&self, index: usize) -> Coord {
+        d1_to_d2(index, self.width)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&T, Coord)> + '_ {
+        let width = self.width;
+        self.data
+            .iter()
+            .enumerate()
+            .map(move |(index, v)| (v, d1_to_d2(index, width)))
+    }
+}
+
+pub type DirectionGrid = Grid<BitFlags<Direction>>;
+
+impl DirectionGrid {
     pub fn new<R: rand::Rng>(width: usize, height: usize, rng: &mut R) -> Self {
         let weights = Weights {
             random: 1.,
@@ -70,15 +107,6 @@ impl Grid {
             width,
             height,
         }
-    }
-
-    pub fn grid_size(&self) -> [usize; 2] {
-        [self.width, self.height]
-    }
-
-    pub fn contains(&self, coord: Coord) -> bool {
-        let (x, y) = coord;
-        x < self.width && y < self.height
     }
 
     pub fn make_open(&mut self, from: Coord, direction: Direction) {
@@ -104,22 +132,6 @@ impl Grid {
         } else {
             None
         }
-    }
-
-    pub fn coord_to_index(&self, coord: Coord) -> usize {
-        coord.0 + coord.1 * self.width
-    }
-
-    pub fn checked_coord_to_index(&self, coord: Coord) -> Option<usize> {
-        if coord.0 < self.width && coord.1 < self.height {
-            Some(self.coord_to_index(coord))
-        } else {
-            None
-        }
-    }
-
-    pub fn index_to_coord(&self, index: usize) -> Coord {
-        d1_to_d2(index, self.width)
     }
 
     pub fn as_graph(&self) -> Graph {
@@ -164,7 +176,7 @@ pub struct ProgramGenSettings {
     pub nop_slide_count: usize,
 }
 
-pub fn apply_not_corner_bit(grid: &mut Grid) {
+pub fn apply_not_corner_bit(grid: &mut DirectionGrid) {
     for index in 0..grid.data.len() {
         let (x, y) = grid.index_to_coord(index);
         if let Ok((tx, ty)) = neighbor_coord((x, y), Direction::SEC) {
@@ -217,7 +229,7 @@ pub fn apply_not_corner_bit(grid: &mut Grid) {
 pub fn create_batch(
     tile_width: f32,
     tile_height: f32,
-    grid: &Grid,
+    grid: &DirectionGrid,
     tiles: &std::collections::HashMap<String, solstice_2d::solstice::quad_batch::Quad<(f32, f32)>>,
 ) -> Vec<solstice_2d::solstice::quad_batch::Quad<solstice_2d::Vertex2D>> {
     use solstice_2d::solstice::{quad_batch::Quad, viewport::Viewport};
@@ -612,24 +624,20 @@ mod tests {
     fn make_open_test() {
         let (width, height) = (2, 2);
         let data = vec![BitFlags::empty(); width * height];
-        let mut map = Map {
-            grid: Grid {
-                data: data.into_boxed_slice(),
-                width,
-                height,
-            },
-            graph: Default::default(),
-            longest_path: vec![],
+        let mut grid = Grid {
+            data: data.into_boxed_slice(),
+            width,
+            height,
         };
 
         let from = (0, 0);
         let to = (0, 1);
-        map.make_open(from, Direction::S);
-        assert_eq!(map.grid.data[map.grid.coord_to_index(from)], Direction::S);
-        assert_eq!(map.grid.data[map.grid.coord_to_index(to)], Direction::N);
+        grid.make_open(from, Direction::S);
+        assert_eq!(grid.data[grid.coord_to_index(from)], Direction::S);
+        assert_eq!(grid.data[grid.coord_to_index(to)], Direction::N);
 
-        map.make_open((1, 0), Direction::E);
-        assert_eq!(map.grid.data[map.grid.coord_to_index((1, 0))], Direction::E);
-        assert_ne!(map.grid.data[map.grid.coord_to_index((0, 1))], Direction::W);
+        grid.make_open((1, 0), Direction::E);
+        assert_eq!(grid.data[grid.coord_to_index((1, 0))], BitFlags::empty());
+        assert_ne!(grid.data[grid.coord_to_index((0, 1))], BitFlags::empty());
     }
 }

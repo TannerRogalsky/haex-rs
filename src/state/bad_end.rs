@@ -1,5 +1,5 @@
 use super::{State, StateContext};
-use crate::map::{Direction, Grid};
+use crate::map::{Direction, DirectionGrid, Grid};
 use enumflags2::BitFlags;
 use solstice_2d::solstice::quad_batch::QuadBatch;
 use solstice_2d::{Color, Draw};
@@ -10,13 +10,13 @@ pub struct BadEnd {
 }
 
 impl BadEnd {
-    pub fn new(ctx: StateContext) -> Result<Self, solstice_2d::GraphicsError> {
+    pub fn new(mut ctx: StateContext) -> Result<Self, solstice_2d::GraphicsError> {
         let width = 16;
         let height = 16;
         let grid = map_gen(width, height);
 
         let tiles = crate::map::create_batch(64., 64., &grid, &ctx.resources.sprites_metadata);
-        let mut batch = QuadBatch::new(ctx.ctx, width * height)?;
+        let mut batch = QuadBatch::new(ctx.g.ctx_mut(), width * height)?;
         for tile in tiles {
             batch.push(tile);
         }
@@ -27,6 +27,11 @@ impl BadEnd {
             grid,
             batch,
             tile_size: [64., 64.],
+            seen: Grid {
+                data: vec![false; width * height].into_boxed_slice(),
+                width,
+                height,
+            },
         };
 
         Ok(Self { map, player })
@@ -60,13 +65,13 @@ impl BadEnd {
         State::BadEnd(self)
     }
 
-    pub fn render(&mut self, ctx: StateContext) {
-        let viewport = ctx.gfx.viewport().clone();
+    pub fn render<'a>(&'a mut self, mut ctx: StateContext<'_, '_, 'a>) {
+        let viewport = ctx.g.ctx_mut().viewport().clone();
         let (w, h) = ctx.aesthetic_canvas.dimensions();
         let mut camera = super::Camera::new(w, h);
         camera.for_map_with_scale(&self.map, &self.player, 1.);
 
-        let geometry = self.map.batch.unmap(ctx.ctx);
+        let geometry = self.map.batch.unmap(ctx.g.ctx_mut());
         const BLACK: Color = Color::new(0., 0., 0., 1.);
 
         let mut quads = crate::Quads::new(&ctx.resources.sprites_metadata);
@@ -80,7 +85,7 @@ impl BadEnd {
             "boss_contrast.png",
         );
 
-        let mut g = ctx.gfx.lock(ctx.ctx);
+        let g = &mut ctx.g;
         g.clear(BLACK);
 
         {
@@ -159,7 +164,7 @@ impl BadEnd {
     }
 }
 
-fn map_gen(width: usize, height: usize) -> Grid {
+fn map_gen(width: usize, height: usize) -> DirectionGrid {
     let all = BitFlags::from(Direction::N) | Direction::E | Direction::S | Direction::W;
     let mut data = vec![all; width * height];
     for x in 0..width {
@@ -171,7 +176,7 @@ fn map_gen(width: usize, height: usize) -> Grid {
         data[(width - 1) + y * width].remove(Direction::E);
     }
 
-    let mut grid = Grid {
+    let mut grid = DirectionGrid {
         data: data.into_boxed_slice(),
         width,
         height,

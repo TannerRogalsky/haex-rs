@@ -2,8 +2,8 @@ use super::{bad_end::BadEnd, main::Main, State, StateContext};
 use crate::{player::Player, state::Map};
 use solstice_2d::{Color, Draw};
 
-fn render(ctx: StateContext, ratio: f32, states: [(&mut Map, &Player); 2]) {
-    let viewport = ctx.gfx.viewport().clone();
+fn render<'a>(mut ctx: StateContext<'_, '_, 'a>, ratio: f32, states: [(&'a mut Map, &'a Player); 2]) {
+    let viewport = ctx.g.gfx().viewport().clone();
 
     let (w, h) = ctx.aesthetic_canvas.dimensions();
     let mut from_camera = super::Camera::new(w, h);
@@ -31,7 +31,7 @@ fn render(ctx: StateContext, ratio: f32, states: [(&mut Map, &Player); 2]) {
     };
 
     {
-        let mut g = ctx.gfx.lock(ctx.ctx);
+        let g = &mut ctx.g;
         g.clear(BLACK);
 
         g.set_canvas(Some(ctx.aesthetic_canvas.clone()));
@@ -51,44 +51,19 @@ fn render(ctx: StateContext, ratio: f32, states: [(&mut Map, &Player); 2]) {
             solstice_2d::Geometry::from(quads.clone()),
             &ctx.resources.sprites,
         );
+
+        g.set_shader(None);
         g.set_canvas(None);
     }
 
     for (index, (map, player)) in std::array::IntoIter::new(states).enumerate() {
-        let geometry = map.batch.unmap(ctx.ctx);
-        let mut g = ctx.gfx.lock(ctx.ctx);
+        ctx.g.set_canvas(Some(ctx.canvas.clone()));
+        ctx.g.clear(BLACK);
 
-        {
-            g.set_canvas(Some(ctx.canvas.clone()));
-            g.clear(BLACK);
+        super::DrawableMap::render(map, player, &mut ctx);
+        ctx.g.set_camera(solstice_2d::Transform2D::default());
 
-            let [gw, gh] = map.grid.grid_size();
-            let [tw, th] = map.tile_size;
-            let (cw, ch) = ctx.canvas.dimensions();
-            let x = cw / (gw as f32 * tw);
-            let y = ch / (gh as f32 * th);
-            g.set_camera(solstice_2d::Transform2D::scale(x, y));
-            g.image(geometry, &ctx.resources.sprites);
-
-            {
-                let (x, y) = player.position();
-                let rot = solstice_2d::Rad(ctx.time.as_secs_f32());
-                let tx = solstice_2d::Transform2D::translation(x, y);
-                let tx = tx * solstice_2d::Transform2D::rotation(rot);
-                g.draw_with_color_and_transform(
-                    solstice_2d::Circle {
-                        x: 0.,
-                        y: 0.,
-                        radius: map.tile_size[0] / 4.,
-                        segments: 4,
-                    },
-                    [0.6, 1., 0.4, 1.0],
-                    tx,
-                );
-            }
-            g.set_camera(solstice_2d::Transform2D::default());
-        }
-
+        let g = &mut ctx.g;
         g.set_canvas(Some(ctx.aesthetic_canvas.clone()));
 
         use solstice_2d::Rad;
@@ -104,7 +79,8 @@ fn render(ctx: StateContext, ratio: f32, states: [(&mut Map, &Player); 2]) {
     }
 
     {
-        let mut g = ctx.gfx.lock(ctx.ctx);
+        let g = &mut ctx.g;
+        g.set_camera(solstice_2d::Transform3D::default());
         g.set_canvas(None);
         g.set_shader(Some(aesthetic_shader.clone()));
         let d = viewport.width().min(viewport.height()) as f32;
