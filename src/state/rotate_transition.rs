@@ -5,15 +5,15 @@ use solstice_2d::{Color, Draw};
 fn render<'a>(
     mut ctx: StateContext<'_, '_, 'a>,
     ratio: f32,
-    states: [(&'a mut Map, &'a Player); 2],
+    states: [(&'a mut Map, &'a Player, f32); 2],
 ) {
     let viewport = ctx.g.gfx().viewport().clone();
 
     let (w, h) = ctx.aesthetic_canvas.dimensions();
     let mut from_camera = super::Camera::new(w, h);
-    from_camera.for_map(&states[0].0, &states[0].1);
+    from_camera.for_map_with_scale(&states[0].0, &states[0].1, states[0].2);
     let mut to_camera = super::Camera::new(w, h);
-    to_camera.for_map(&states[1].0, &states[1].1);
+    to_camera.for_map_with_scale(&states[1].0, &states[1].1, states[1].2);
 
     let camera = from_camera
         .transform
@@ -60,11 +60,14 @@ fn render<'a>(
         g.set_canvas(None);
     }
 
-    for (index, (map, player)) in std::array::IntoIter::new(states).enumerate() {
+    for (index, (map, player, _)) in std::array::IntoIter::new(states).enumerate() {
         ctx.g.set_canvas(Some(ctx.canvas.clone()));
         ctx.g.clear(BLACK);
 
-        super::DrawableMap::render(map, player, &mut ctx);
+        use super::DrawableMap;
+        map.render(player, &mut ctx);
+        map.render_player(player, &mut ctx);
+        map.render_overlay(player, 2, &mut ctx);
         ctx.g.set_camera(solstice_2d::Transform2D::default());
 
         let g = &mut ctx.g;
@@ -121,8 +124,8 @@ impl RotateTransition<Main, Main> {
 
     pub fn render(&mut self, ctx: StateContext) {
         let ratio = self.elapsed.as_secs_f32() / self.time.as_secs_f32();
-        let from = (&mut self.from.map.inner, &self.from.player);
-        let to = (&mut self.to.map.inner, &self.to.player);
+        let from = (&mut self.from.map.inner, &self.from.player, 1.);
+        let to = (&mut self.to.map.inner, &self.to.player, 1.);
         render(ctx, ratio, [from, to]);
     }
 }
@@ -139,8 +142,8 @@ impl RotateTransition<Main, BadEnd> {
 
     pub fn render(&mut self, ctx: StateContext) {
         let ratio = self.elapsed.as_secs_f32() / self.time.as_secs_f32();
-        let from = (&mut self.from.map.inner, &self.from.player);
-        let to = (&mut self.to.map, &self.to.player);
+        let from = (&mut self.from.map.inner, &self.from.player, 1.);
+        let to = (&mut self.to.map, &self.to.player, BadEnd::SCALE);
         render(ctx, ratio, [from, to]);
     }
 }

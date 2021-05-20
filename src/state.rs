@@ -3,6 +3,7 @@ mod main;
 mod menu;
 mod rotate_transition;
 
+use crate::player::Player;
 use camera::Camera;
 
 pub struct StateContext<'a, 'b, 'c> {
@@ -70,6 +71,17 @@ impl Graph {
 
 pub trait DrawableMap {
     fn render<'a>(&'a self, player: &'a crate::player::Player, ctx: &mut StateContext<'_, '_, 'a>);
+    fn render_player<'a>(
+        &'a self,
+        player: &'a crate::player::Player,
+        ctx: &mut StateContext<'_, '_, 'a>,
+    );
+    fn render_overlay<'a>(
+        &'a self,
+        player: &'a crate::player::Player,
+        view_distance: i32,
+        ctx: &mut StateContext<'_, '_, 'a>,
+    );
 }
 
 pub struct NavigableMap {
@@ -121,6 +133,7 @@ fn overlay<'a>(
     ctx: &mut StateContext<'_, '_, 'a>,
     map: &'a Map,
     player: &'a crate::player::Player,
+    view_distance: i32,
 ) {
     use solstice_2d::Draw;
 
@@ -148,7 +161,7 @@ fn overlay<'a>(
             use solstice_2d::solstice::{quad_batch::Quad, viewport::Viewport};
             if *seen {
                 let d = (px as i32 - x as i32).abs() + (py as i32 - y as i32).abs();
-                if d <= 2 {
+                if d <= view_distance {
                     None
                 } else {
                     let (px, py) = map.coord_to_mid_pixel((x, y));
@@ -188,12 +201,20 @@ fn overlay<'a>(
 }
 
 impl DrawableMap for NavigableMap {
-    fn render<'a>(&'a self, player: &'a crate::player::Player, ctx: &mut StateContext<'_, '_, 'a>) {
-        use solstice_2d::Draw;
-
+    fn render<'a>(
+        &'a self,
+        _player: &'a crate::player::Player,
+        ctx: &mut StateContext<'_, '_, 'a>,
+    ) {
         self.inner.draw(ctx);
 
+        if cfg!(debug_assertions) {
+            let [w, h] = self.inner.tile_size;
+            self.graph.draw(w, h, &mut ctx.g);
+        }
+
         if let Some(end) = self.graph.longest_path.last().copied() {
+            use solstice_2d::Draw;
             let (x, y) = self.inner.coord_to_mid_pixel(end);
             ctx.g.draw_with_color(
                 solstice_2d::Circle {
@@ -205,57 +226,70 @@ impl DrawableMap for NavigableMap {
                 [0.3, 0.2, 0.8, 1.],
             );
         }
+    }
 
-        {
-            let (x, y) = player.position();
-            let rot = solstice_2d::Rad(ctx.time.as_secs_f32());
-            let tx = solstice_2d::Transform2D::translation(x, y);
-            let tx = tx * solstice_2d::Transform2D::rotation(rot);
-            ctx.g.draw_with_color_and_transform(
-                solstice_2d::Circle {
-                    x: 0.,
-                    y: 0.,
-                    radius: self.inner.tile_size[0] / 4.,
-                    segments: 4,
-                },
-                [0.6, 1., 0.4, 1.0],
-                tx,
-            );
-        }
+    fn render_player<'a>(&'a self, player: &'a Player, ctx: &mut StateContext<'_, '_, 'a>) {
+        use solstice_2d::Draw;
+        let (x, y) = player.position();
+        let rot = solstice_2d::Rad(ctx.time.as_secs_f32());
+        let tx = solstice_2d::Transform2D::translation(x, y);
+        let tx = tx * solstice_2d::Transform2D::rotation(rot);
+        ctx.g.draw_with_color_and_transform(
+            solstice_2d::Circle {
+                x: 0.,
+                y: 0.,
+                radius: self.inner.tile_size[0] / 4.,
+                segments: 4,
+            },
+            [0.6, 1., 0.4, 1.0],
+            tx,
+        );
+    }
 
-        overlay(ctx, &self.inner, player);
-
-        if cfg!(debug_assertions) {
-            let [w, h] = self.inner.tile_size;
-            self.graph.draw(w, h, &mut ctx.g);
-        }
+    fn render_overlay<'a>(
+        &'a self,
+        player: &'a Player,
+        view_distance: i32,
+        ctx: &mut StateContext<'_, '_, 'a>,
+    ) {
+        overlay(ctx, &self.inner, player, view_distance);
     }
 }
 
 impl DrawableMap for Map {
-    fn render<'a>(&'a self, player: &'a crate::player::Player, ctx: &mut StateContext<'_, '_, 'a>) {
-        use solstice_2d::Draw;
-
+    fn render<'a>(
+        &'a self,
+        _player: &'a crate::player::Player,
+        ctx: &mut StateContext<'_, '_, 'a>,
+    ) {
         self.draw(ctx);
+    }
 
-        {
-            let (x, y) = player.position();
-            let rot = solstice_2d::Rad(ctx.time.as_secs_f32());
-            let tx = solstice_2d::Transform2D::translation(x, y);
-            let tx = tx * solstice_2d::Transform2D::rotation(rot);
-            ctx.g.draw_with_color_and_transform(
-                solstice_2d::Circle {
-                    x: 0.,
-                    y: 0.,
-                    radius: self.tile_size[0] / 4.,
-                    segments: 4,
-                },
-                [0.6, 1., 0.4, 1.0],
-                tx,
-            );
-        }
+    fn render_player<'a>(&'a self, player: &'a Player, ctx: &mut StateContext<'_, '_, 'a>) {
+        use solstice_2d::Draw;
+        let (x, y) = player.position();
+        let rot = solstice_2d::Rad(ctx.time.as_secs_f32());
+        let tx = solstice_2d::Transform2D::translation(x, y);
+        let tx = tx * solstice_2d::Transform2D::rotation(rot);
+        ctx.g.draw_with_color_and_transform(
+            solstice_2d::Circle {
+                x: 0.,
+                y: 0.,
+                radius: self.tile_size[0] / 4.,
+                segments: 4,
+            },
+            [0.6, 1., 0.4, 1.0],
+            tx,
+        );
+    }
 
-        overlay(ctx, self, player);
+    fn render_overlay<'a>(
+        &'a self,
+        player: &'a Player,
+        view_distance: i32,
+        ctx: &mut StateContext<'_, '_, 'a>,
+    ) {
+        overlay(ctx, self, player, view_distance);
     }
 }
 
@@ -456,14 +490,22 @@ mod camera {
             let [sw, sh] = self.screen_dimension;
             let [gw, gh] = map.grid.grid_size();
             let [tw, th] = map.tile_size;
-            let [pw, ph] = [gw as f32 * tw * scale, gh as f32 * th * scale];
+            let [tw, th] = [tw * scale, th * scale];
+            let [pw, ph] = [gw as f32 * tw, gh as f32 * th];
             let camera_should_follow = pw > sw || ph > sh;
 
             if camera_should_follow {
                 let (player_x, player_y) = player.position();
+                let [player_x, player_y] = [player_x * scale, player_y * scale];
 
-                let x = player_x.clamp(sw / 2. - tw, pw - sw / 2. + tw);
-                let y = player_y.clamp(sh / 2. - th, ph - sh / 2. + th);
+                let min_x = (sw / 2. - tw).min(pw / 2.);
+                let min_y = (sh / 2. - th).min(ph / 2.);
+
+                let max_x = (pw - sw / 2. + tw).max(pw / 2.);
+                let max_y = (ph - sh / 2. + th).max(ph / 2.);
+
+                let x = player_x.clamp(min_x, max_x);
+                let y = player_y.clamp(min_y, max_y);
 
                 let x = x - pw / 2.;
                 let y = y - ph / 2.;

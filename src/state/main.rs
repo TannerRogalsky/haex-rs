@@ -173,6 +173,8 @@ impl Main {
 
             use super::DrawableMap;
             self.map.render(&self.player, &mut ctx);
+            self.map.render_player(&self.player, &mut ctx);
+            self.map.render_overlay(&self.player, 2, &mut ctx);
             ctx.g.set_camera(solstice_2d::Transform2D::default());
         }
 
