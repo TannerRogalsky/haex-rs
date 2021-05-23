@@ -21,3 +21,11 @@ How do these fit into the theme of "Breaking the Code".
 
 Cron's control flow could be expanded to spawn new tasks if desired.
 A fire-and-forget animation system would be nice. Different from Cron in that it's explicitly timed things.
+
+## Interaction
+
+Control scheme: 
+Movement: Up/Down/Left/Right, WASD, JKL;,
+Context switch: everything else
+
+Programs extend from user in circular menu, rotating to show movement works.

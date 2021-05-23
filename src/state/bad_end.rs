@@ -190,22 +190,90 @@ impl BadEnd {
             }
             EndState::FadeToSequence(_) => {
                 self.map.render(&self.player, &mut ctx);
+
+                let boss = ctx.resources.sprites_metadata.get("boss_body.png").unwrap();
+                let boss_accent = ctx
+                    .resources
+                    .sprites_metadata
+                    .get("boss_color.png")
+                    .unwrap();
+
                 for (show, coord) in self.boss_show.iter() {
                     if *show {
                         let [tw, th] = self.map.tile_size;
+                        let [gw, gh] = self.map.grid.grid_size();
                         let (px, py) = self.map.coord_to_mid_pixel(coord);
-                        ctx.g.draw(solstice_2d::Rectangle {
+
+                        let positions = solstice_2d::Rectangle {
                             x: px - tw / 2.,
                             y: py - th / 2.,
                             width: tw,
                             height: th,
-                        });
+                        };
+
+                        let sub = |mut uvs: solstice_2d::Rectangle| {
+                            let u = uvs.width / gw as f32;
+                            let v = uvs.height / gh as f32;
+                            uvs.x += coord.0 as f32 * u;
+                            uvs.y += coord.1 as f32 * v;
+                            uvs.width = u;
+                            uvs.height = v;
+                            uvs
+                        };
+
+                        ctx.g.draw_with_color(positions, [0., 0., 0., 1.]);
+                        ctx.g.image(
+                            crate::UVRect {
+                                positions,
+                                uvs: sub(boss.uvs),
+                            },
+                            &ctx.resources.sprites,
+                        );
+                        ctx.g.image(
+                            crate::UVRect {
+                                positions,
+                                uvs: sub(boss_accent.uvs),
+                            },
+                            &ctx.resources.sprites,
+                        );
                     }
                 }
                 self.map.render_player(&self.player, &mut ctx);
             }
             EndState::Speech => {
-                self.map.render(&self.player, &mut ctx);
+                let (width, height) = ctx.canvas.dimensions();
+                // self.map.render(&self.player, &mut ctx);
+                let position = solstice_2d::Rectangle {
+                    x: 0.0,
+                    y: 0.0,
+                    width,
+                    height,
+                };
+
+                ctx.g.image(
+                    crate::UVRect {
+                        positions: position,
+                        uvs: ctx
+                            .resources
+                            .sprites_metadata
+                            .get("boss_body.png")
+                            .unwrap()
+                            .uvs,
+                    },
+                    &ctx.resources.sprites,
+                );
+                ctx.g.image(
+                    crate::UVRect {
+                        positions: position,
+                        uvs: ctx
+                            .resources
+                            .sprites_metadata
+                            .get("boss_color.png")
+                            .unwrap()
+                            .uvs,
+                    },
+                    &ctx.resources.sprites,
+                );
                 self.map.render_player(&self.player, &mut ctx);
                 ctx.g.set_camera(
                     solstice_2d::Transform2D::scale(3., 3.)

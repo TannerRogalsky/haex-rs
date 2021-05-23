@@ -145,9 +145,8 @@ fn overlay<'a>(
         .sprites_metadata
         .get("boss_contrast.png")
         .unwrap();
-    let (u1, v1) = uv_bounds.vertices[0];
-    let (u2, v2) = uv_bounds.vertices[3];
-    let (uw, uh) = (u2 - u1, v2 - v1);
+    let (u1, v1) = (uv_bounds.uvs.x, uv_bounds.uvs.y);
+    let (uw, uh) = (uv_bounds.uvs.width, uv_bounds.uvs.height);
 
     let u = uw / map.grid.width as f32;
     let v = uh / map.grid.height as f32;
@@ -193,7 +192,8 @@ fn overlay<'a>(
     let indices = (0..(vertices.len() / 4))
         .flat_map(|i| {
             let offset = i as u32 * 4;
-            std::array::IntoIter::new([0, 1, 2, 2, 1, 3]).map(move |i| i + offset)
+            std::array::IntoIter::new(solstice_2d::solstice::quad_batch::INDICES)
+                .map(move |i| i as u32 + offset)
         })
         .collect::<Vec<_>>();
     let geometry = solstice_2d::Geometry::new(vertices, Some(indices));
@@ -379,9 +379,16 @@ pub enum State {
     MainToBadEnd(rotate_transition::RotateTransition<main::Main, bad_end::BadEnd>),
 }
 
-impl State {
-    pub fn new() -> Self {
+impl std::default::Default for State {
+    fn default() -> Self {
         Self::Menu(menu::Menu::new())
+    }
+}
+
+impl State {
+    pub fn new(_ctx: StateContext) -> Result<Self, solstice_2d::GraphicsError> {
+        // Ok(Self::BadEnd(bad_end::BadEnd::new(ctx)?))
+        Ok(Self::Menu(menu::Menu::new()))
     }
 
     pub fn update(self, dt: std::time::Duration, ctx: StateContext) -> Self {

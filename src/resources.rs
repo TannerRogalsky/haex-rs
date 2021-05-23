@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
-use solstice_2d::solstice::{self, quad_batch::Quad, Context};
-use std::convert::TryInto;
+use solstice_2d::solstice::{self, Context};
 
 #[derive(Serialize, Deserialize)]
 struct Point<T> {
@@ -14,6 +13,17 @@ struct Rect {
     point: Point<u32>,
     #[serde(flatten)]
     size: Dimension,
+}
+
+impl From<Rect> for solstice_2d::Rectangle {
+    fn from(r: Rect) -> Self {
+        Self::new(
+            r.point.x as f32,
+            r.point.y as f32,
+            r.size.w as f32,
+            r.size.h as f32,
+        )
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -36,16 +46,25 @@ struct SpriteSheetEntry {
 }
 
 impl Rect {
-    fn into_quad(self, src_dim: &Dimension) -> Quad<(f32, f32)> {
+    fn into_quad(self, src_dim: &Dimension) -> crate::UVRect {
         let Dimension { w, h } = src_dim;
         let (w, h) = (*w as f32, *h as f32);
-        use solstice::viewport::Viewport as Vp;
-        Quad::from(Vp::new(
+        let uvs = solstice_2d::Rectangle::new(
             self.point.x as f32 / w,
             self.point.y as f32 / h,
             self.size.w as f32 / w,
             self.size.h as f32 / h,
-        ))
+        );
+        let position = solstice_2d::Rectangle::new(
+            self.point.x as f32,
+            self.point.y as f32,
+            self.size.w as f32,
+            self.size.h as f32,
+        );
+        crate::UVRect {
+            positions: position,
+            uvs,
+        }
     }
 }
 
@@ -135,6 +154,7 @@ impl Resources {
         ctx: &mut Context,
         gfx: &mut solstice_2d::Graphics,
     ) -> eyre::Result<LoadedResources> {
+        use std::convert::TryInto;
         Ok(LoadedResources {
             debug_font: gfx.add_font(self.debug_font_data.try_into()?),
             pixel_font: gfx.add_font(self.pixel_font_data.try_into()?),
@@ -171,12 +191,14 @@ impl Shaders {
     }
 }
 
+pub type Tiles = std::collections::HashMap<String, crate::UVRect>;
+
 pub struct LoadedResources {
     pub debug_font: solstice_2d::FontId,
     pub pixel_font: solstice_2d::FontId,
     pub sprites: solstice::image::Image,
     pub noise: solstice::image::Image,
-    pub sprites_metadata: std::collections::HashMap<String, Quad<(f32, f32)>>,
+    pub sprites_metadata: Tiles,
     pub shaders: Shaders,
     pub music: crate::audio::StreamingAudioSource,
 }

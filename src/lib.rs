@@ -82,7 +82,7 @@ pub struct CronContext {
 
 impl CronContext {
     pub fn game_state_mut(&mut self) -> &mut state::State {
-        self.game_state.get_or_insert_with(state::State::new)
+        self.game_state.get_or_insert_with(state::State::default)
     }
 }
 
@@ -121,8 +121,6 @@ impl Game {
             },
         )?;
 
-        let cron = cron::Cron::default();
-
         let maps = MapProgression {
             settings: map::MapGenSettings {
                 width: 5,
@@ -156,21 +154,22 @@ impl Game {
 
         let audio_ctx = audio::AudioContext::new();
 
+        let mut shared = Static {
+            ctx,
+            gfx,
+            resources,
+            aesthetic_canvas,
+            canvas,
+            input_state: Default::default(),
+            audio_ctx,
+            maps,
+            time,
+        };
+        let mut cron = cron::Cron::default();
+        let game_state = Some(state::State::new(shared.as_ctx(&mut cron))?);
+
         Ok(Self {
-            cron_ctx: CronContext {
-                shared: Static {
-                    ctx,
-                    gfx,
-                    resources,
-                    aesthetic_canvas,
-                    canvas,
-                    input_state: Default::default(),
-                    audio_ctx,
-                    maps,
-                    time,
-                },
-                game_state: Some(state::State::new()),
-            },
+            cron_ctx: CronContext { shared, game_state },
             cron,
         })
     }
@@ -193,7 +192,7 @@ impl Game {
         }
 
         ctx.game_state
-            .get_or_insert_with(state::State::new)
+            .get_or_insert_with(state::State::default)
             .render(ctx.shared.as_ctx(&mut self.cron));
     }
 
@@ -215,7 +214,7 @@ impl Game {
         };
 
         ctx.game_state
-            .get_or_insert_with(state::State::new)
+            .get_or_insert_with(state::State::default)
             .handle_key_event(ctx.shared.as_ctx(&mut self.cron), state, key_code);
     }
 
@@ -236,7 +235,7 @@ impl Game {
 
         self.cron_ctx
             .game_state
-            .get_or_insert_with(state::State::new)
+            .get_or_insert_with(state::State::default)
             .handle_mouse_event(self.cron_ctx.shared.as_ctx(&mut self.cron), event);
     }
 
@@ -249,22 +248,19 @@ impl Game {
     }
 }
 
-use quads::Quads;
+use quads::{Quads, UVRect};
 mod quads {
-    use solstice_2d::{
-        solstice::{quad_batch::Quad, viewport::Viewport},
-        Vertex2D,
-    };
+    use solstice_2d::Vertex2D;
 
     #[derive(Clone, PartialEq)]
     pub struct Quads<'a> {
-        metadata: &'a std::collections::HashMap<String, Quad<(f32, f32)>>,
+        metadata: &'a crate::resources::Tiles,
         vertices: Vec<Vertex2D>,
         count: usize,
     }
 
     impl<'a> Quads<'a> {
-        pub fn new(metadata: &'a std::collections::HashMap<String, Quad<(f32, f32)>>) -> Self {
+        pub fn new(metadata: &'a crate::resources::Tiles) -> Self {
             Self {
                 metadata,
                 vertices: vec![],
@@ -274,14 +270,10 @@ mod quads {
 
         pub fn add(&mut self, position: solstice_2d::Rectangle, name: &str) {
             if let Some(uvs) = self.metadata.get(name) {
-                let quad = uvs
-                    .zip(Quad::from(Viewport::new(
-                        position.x,
-                        position.y,
-                        position.width,
-                        position.height,
-                    )))
-                    .map(|((s, t), (x, y))| Vertex2D {
+                type Quad = solstice_2d::solstice::quad_batch::Quad<(f32, f32)>;
+                let quad = Quad::from(position)
+                    .zip(Quad::from(uvs.uvs))
+                    .map(|((x, y), (s, t))| Vertex2D {
                         position: [x, y],
                         uv: [s, t],
                         ..Default::default()
@@ -302,10 +294,58 @@ mod quads {
             let indices = (0..quads.count)
                 .flat_map(|i| {
                     let offset = i as u32 * 4;
-                    std::array::IntoIter::new([0, 1, 2, 2, 1, 3]).map(move |i| i + offset)
+                    std::array::IntoIter::new(solstice_2d::solstice::quad_batch::INDICES)
+                        .map(move |i| i as u32 + offset)
                 })
                 .collect::<Vec<_>>();
             solstice_2d::Geometry::new(quads.vertices, Some(indices))
+        }
+    }
+
+    impl<'a> From<&'a Quads<'_>> for solstice_2d::Geometry<'a, Vertex2D> {
+        fn from(quads: &'a Quads<'_>) -> Self {
+            let indices = (0..quads.count)
+                .flat_map(|i| {
+                    let offset = i as u32 * 4;
+                    std::array::IntoIter::new(solstice_2d::solstice::quad_batch::INDICES)
+                        .map(move |i| i as u32 + offset)
+                })
+                .collect::<Vec<_>>();
+            solstice_2d::Geometry::new(&quads.vertices, Some(indices))
+        }
+    }
+
+    #[derive(Copy, Clone, PartialEq)]
+    pub struct UVRect {
+        pub positions: solstice_2d::Rectangle,
+        pub uvs: solstice_2d::Rectangle,
+    }
+
+    impl UVRect {
+        pub fn at_zero(mut self) -> UVRect {
+            self.positions.x = 0.;
+            self.positions.y = 0.;
+            self
+        }
+    }
+
+    impl From<UVRect> for solstice_2d::Geometry<'_, Vertex2D> {
+        fn from(rect: UVRect) -> Self {
+            let vertices = solstice_2d::solstice::quad_batch::Quad::<Vertex2D>::from(rect);
+            solstice_2d::Geometry::new(vertices.vertices.to_vec(), Some(&[0u32, 1, 3, 1, 2, 3][..]))
+        }
+    }
+
+    impl From<UVRect> for solstice_2d::solstice::quad_batch::Quad<Vertex2D> {
+        fn from(rect: UVRect) -> Self {
+            let positions =
+                solstice_2d::solstice::quad_batch::Quad::<(f32, f32)>::from(rect.positions);
+            let uvs = solstice_2d::solstice::quad_batch::Quad::<(f32, f32)>::from(rect.uvs);
+            positions.zip(uvs).map(|((x, y), (s, t))| Vertex2D {
+                position: [x, y],
+                uv: [s, t],
+                ..Default::default()
+            })
         }
     }
 }
