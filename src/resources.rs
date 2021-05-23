@@ -120,6 +120,7 @@ impl ImageData {
 
 pub struct Resources {
     pub debug_font_data: Vec<u8>,
+    pub pixel_font_data: Vec<u8>,
     pub sprites_data: ImageData,
     pub noise_data: ImageData,
     pub sprites_metadata: SpriteSheet,
@@ -136,6 +137,7 @@ impl Resources {
     ) -> eyre::Result<LoadedResources> {
         Ok(LoadedResources {
             debug_font: gfx.add_font(self.debug_font_data.try_into()?),
+            pixel_font: gfx.add_font(self.pixel_font_data.try_into()?),
             sprites: self.sprites_data.try_into_image(ctx)?,
             noise: self.noise_data.try_into_image(ctx)?,
             sprites_metadata: {
@@ -171,6 +173,7 @@ impl Shaders {
 
 pub struct LoadedResources {
     pub debug_font: solstice_2d::FontId,
+    pub pixel_font: solstice_2d::FontId,
     pub sprites: solstice::image::Image,
     pub noise: solstice::image::Image,
     pub sprites_metadata: std::collections::HashMap<String, Quad<(f32, f32)>>,

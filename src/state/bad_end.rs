@@ -157,7 +157,7 @@ impl BadEnd {
         State::BadEnd(self)
     }
 
-    pub fn render<'a>(&'a mut self, mut ctx: StateContext<'_, '_, 'a>) {
+    pub fn render<'a>(&'a mut self, mut ctx: StateContext<'a, '_, 'a>) {
         let viewport = ctx.g.ctx_mut().viewport().clone();
         let (w, h) = ctx.aesthetic_canvas.dimensions();
         let mut camera = super::Camera::new(w, h);
@@ -220,10 +220,7 @@ impl BadEnd {
         g.clear(BLACK);
 
         g.set_shader(Some(ctx.resources.shaders.menu.clone()));
-        g.image(
-            solstice_2d::Geometry::from(quads.clone()),
-            &ctx.resources.sprites,
-        );
+        g.image(quads.clone(), &ctx.resources.sprites);
         g.set_shader(None);
 
         g.set_camera(camera.transform);

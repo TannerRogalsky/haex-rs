@@ -436,7 +436,9 @@ impl State {
                     *self = new_state;
                 }
             }
-            State::Main(_) => {}
+            State::Main(main) => {
+                main.handle_key_event(ctx, state, key_code);
+            }
             State::MainToMain(_) => {}
             State::BadEnd(_) => {}
             State::MainToBadEnd(_) => {}

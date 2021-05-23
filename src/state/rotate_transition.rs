@@ -3,7 +3,7 @@ use crate::{player::Player, state::Map};
 use solstice_2d::{Color, Draw};
 
 fn render<'a>(
-    mut ctx: StateContext<'_, '_, 'a>,
+    mut ctx: StateContext<'a, '_, 'a>,
     ratio: f32,
     states: [(&'a mut Map, &'a Player, f32); 2],
 ) {
@@ -51,10 +51,7 @@ fn render<'a>(
             "boss_contrast.png",
         );
         g.set_shader(Some(ctx.resources.shaders.menu.clone()));
-        g.image(
-            solstice_2d::Geometry::from(quads.clone()),
-            &ctx.resources.sprites,
-        );
+        g.image(quads.clone(), &ctx.resources.sprites);
 
         g.set_shader(None);
         g.set_canvas(None);

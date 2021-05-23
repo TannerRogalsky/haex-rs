@@ -19,6 +19,7 @@ fn main() -> eyre::Result<()> {
     let sounds_folder = resources_folder.join("sounds");
     let resources = resources::Resources {
         debug_font_data: std::fs::read(fonts_folder.join("Inconsolata-Regular.ttf"))?,
+        pixel_font_data: std::fs::read(fonts_folder.join("04b03.ttf"))?,
         sprites_data: image(images_folder.join("sprites.png"))?,
         noise_data: image(images_folder.join("noise.png"))?,
         sprites_metadata: serde_json::from_reader(std::fs::File::open(

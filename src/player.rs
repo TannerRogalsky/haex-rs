@@ -14,14 +14,21 @@ enum State {
     Moving(Moving),
 }
 
+#[derive(Default)]
+pub struct Programs {
+    pub nop_slide: usize,
+}
+
 pub struct Player {
     state: State,
+    pub programs: Programs,
 }
 
 impl Player {
     pub fn new(x: f32, y: f32) -> Self {
         Self {
             state: State::Stationary(Stationary { position: (x, y) }),
+            programs: Default::default(),
         }
     }
 

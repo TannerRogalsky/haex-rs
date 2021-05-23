@@ -1,12 +1,18 @@
-use super::{NavigableMap, State, StateContext};
-use crate::ProgressionType;
+mod ui;
+
+use crate::{
+    state::{NavigableMap, State, StateContext},
+    ProgressionType,
+};
 use solstice_2d::{Color, Draw};
+use ui::UIState;
 
 pub struct Main {
     pub map: NavigableMap,
     pub player: crate::player::Player,
     active_program: Option<crate::cron::ID>,
     progression: crate::MapProgression,
+    ui_state: UIState,
 }
 
 impl Main {
@@ -38,10 +44,29 @@ impl Main {
             player,
             active_program: None,
             progression: settings,
+            ui_state: UIState::Closed,
         })
     }
 
+    pub fn handle_key_event(
+        &mut self,
+        mut ctx: StateContext,
+        state: crate::ElementState,
+        key_code: crate::VirtualKeyCode,
+    ) {
+        let prog_state = crate::programs::StateMut {
+            ctx: &mut ctx,
+            player: &mut self.player,
+            map: &mut self.map.inner,
+        };
+        if let Some(prog) = self.ui_state.handle_key_event(state, key_code, prog_state) {
+            self.active_program = Some(prog);
+        }
+    }
+
     pub fn update(mut self, dt: std::time::Duration, mut ctx: StateContext) -> State {
+        self.ui_state.update(dt);
+
         if let Some(active_program) = self.active_program {
             if !ctx.cron.contains(active_program) {
                 self.active_program = None;
@@ -61,12 +86,14 @@ impl Main {
             None
         };
 
-        if let Some(direction) = direction {
-            let start = self.map.inner.pixel_to_coord(self.player.position());
-            if let Some(end) = self.map.inner.grid.valid_move(start, direction) {
-                let (x, y) = self.map.inner.coord_to_mid_pixel(end);
-                let time = std::time::Duration::from_secs_f32(0.2);
-                self.player.try_move(x, y, time);
+        if !self.ui_state.is_open() {
+            if let Some(direction) = direction {
+                let start = self.map.inner.pixel_to_coord(self.player.position());
+                if let Some(end) = self.map.inner.grid.valid_move(start, direction) {
+                    let (x, y) = self.map.inner.coord_to_mid_pixel(end);
+                    let time = std::time::Duration::from_secs_f32(0.2);
+                    self.player.try_move(x, y, time);
+                }
             }
         }
 
@@ -130,23 +157,24 @@ impl Main {
             }
         }
 
-        if cfg!(debug_assertions) {
-            if ctx.input_state.ctrl && self.active_program.is_none() {
-                let state = crate::programs::StateMut {
-                    ctx: &mut ctx,
-                    player: &mut self.player,
-                    map: &mut self.map.inner,
-                };
-                let r = crate::programs::NopSlide::new(state);
-                self.active_program = Some(r.callback);
-            }
-        }
+        self.ui_state.set_open(ctx.input_state.ctrl);
+        // if cfg!(debug_assertions) {
+        //     if ctx.input_state.ctrl && self.active_program.is_none() {
+        //         let state = crate::programs::StateMut {
+        //             ctx: &mut ctx,
+        //             player: &mut self.player,
+        //             map: &mut self.map.inner,
+        //         };
+        //         let r = crate::programs::NopSlide::new(state);
+        //         self.active_program = Some(r.callback);
+        //     }
+        // }
         self.map.inner.batch.unmap(ctx.g.ctx_mut());
 
         State::Main(self)
     }
 
-    pub fn render<'a>(&'a mut self, mut ctx: StateContext<'_, '_, 'a>) {
+    pub fn render<'a>(&'a mut self, mut ctx: StateContext<'a, '_, 'a>) {
         let viewport = ctx.g.ctx_mut().viewport().clone();
         let (w, h) = ctx.aesthetic_canvas.dimensions();
         let mut camera = super::Camera::new(w, h);
@@ -175,6 +203,7 @@ impl Main {
             self.map.render(&self.player, &mut ctx);
             self.map.render_player(&self.player, &mut ctx);
             self.map.render_overlay(&self.player, 2, &mut ctx);
+
             ctx.g.set_camera(solstice_2d::Transform2D::default());
         }
 
@@ -183,10 +212,7 @@ impl Main {
         g.clear(BLACK);
 
         g.set_shader(Some(ctx.resources.shaders.menu.clone()));
-        g.image(
-            solstice_2d::Geometry::from(quads.clone()),
-            &ctx.resources.sprites,
-        );
+        g.image(quads.clone(), &ctx.resources.sprites);
         g.set_shader(None);
 
         g.set_camera(camera.transform);
@@ -194,6 +220,9 @@ impl Main {
         g.image(plane, ctx.canvas);
 
         g.set_camera(solstice_2d::Transform2D::default());
+
+        self.ui_state.render(g, ctx.resources, &self.player);
+
         g.set_canvas(None);
         g.set_shader(Some({
             let mut shader = ctx.resources.shaders.aesthetic.clone();

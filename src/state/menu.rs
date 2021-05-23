@@ -17,7 +17,7 @@ impl Menu {
         }
     }
 
-    pub fn render<'a>(&'a mut self, mut ctx: StateContext<'_, '_, 'a>) {
+    pub fn render<'a>(&'a mut self, mut ctx: StateContext<'a, '_, 'a>) {
         let mut quads = crate::Quads::new(&ctx.resources.sprites_metadata);
         quads.add(
             Rectangle {
@@ -38,10 +38,7 @@ impl Menu {
         g.set_canvas(Some(ctx.aesthetic_canvas.clone()));
         g.clear(BLACK);
         g.set_shader(Some(ctx.resources.shaders.menu.clone()));
-        g.image(
-            solstice_2d::Geometry::from(quads.clone()),
-            &ctx.resources.sprites,
-        );
+        g.image(quads.clone(), &ctx.resources.sprites);
 
         g.set_shader(None);
         {
@@ -142,7 +139,7 @@ impl Menu {
                 name,
             );
         }
-        g.image(solstice_2d::Geometry::from(quads), &ctx.resources.sprites);
+        g.image(quads, &ctx.resources.sprites);
 
         g.set_canvas(None);
         g.set_shader(Some({

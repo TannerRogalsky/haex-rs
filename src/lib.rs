@@ -256,7 +256,7 @@ mod quads {
         Vertex2D,
     };
 
-    #[derive(Clone)]
+    #[derive(Clone, PartialEq)]
     pub struct Quads<'a> {
         metadata: &'a std::collections::HashMap<String, Quad<(f32, f32)>>,
         vertices: Vec<Vertex2D>,
