@@ -55,10 +55,10 @@ impl BadEnd {
         };
 
         let [w, h] = [width as f32 * 64., height as f32 * 64.];
-        let lh = 16. * 2.;
+        let lh = 16. * 3.;
         let [die_x, die_y] = [w * 0.5, h * 0.7 + lh * 2.];
-        fn hacker_text(_t: f32) -> String {
-            "THE MAN".to_owned()
+        fn hacker_text(t: f32) -> String {
+            text::lerp_string("THE MAN", "THE HACKER", t).to_string()
         }
         let commands = vec![
             text::TextCommand::new(w * 0.1, h * 0.1, "AND THE LORD GOD COMMANDED"),
@@ -181,11 +181,25 @@ impl BadEnd {
         ctx.g.set_canvas(Some(ctx.canvas.clone()));
         ctx.g.clear(BLACK);
 
+        let full_screen = {
+            let (width, height) = ctx.canvas.dimensions();
+            solstice_2d::Rectangle {
+                x: 0.0,
+                y: 0.0,
+                width,
+                height,
+            }
+        };
+
         use super::DrawableMap;
         match self.state {
             EndState::Start => {
                 self.map.render(&self.player, &mut ctx);
                 self.map.render_player(&self.player, &mut ctx);
+                ctx.g
+                    .set_shader(Some(ctx.resources.shaders.vignette.clone()));
+                ctx.g.draw(full_screen);
+                ctx.g.set_shader(None);
                 self.map.render_overlay(&self.player, 100, &mut ctx);
             }
             EndState::FadeToSequence(_) => {
@@ -239,20 +253,15 @@ impl BadEnd {
                     }
                 }
                 self.map.render_player(&self.player, &mut ctx);
+                ctx.g
+                    .set_shader(Some(ctx.resources.shaders.vignette.clone()));
+                ctx.g.draw(full_screen);
+                ctx.g.set_shader(None);
             }
             EndState::Speech => {
-                let (width, height) = ctx.canvas.dimensions();
-                // self.map.render(&self.player, &mut ctx);
-                let position = solstice_2d::Rectangle {
-                    x: 0.0,
-                    y: 0.0,
-                    width,
-                    height,
-                };
-
                 ctx.g.image(
                     crate::UVRect {
-                        positions: position,
+                        positions: full_screen,
                         uvs: ctx
                             .resources
                             .sprites_metadata
@@ -264,7 +273,7 @@ impl BadEnd {
                 );
                 ctx.g.image(
                     crate::UVRect {
-                        positions: position,
+                        positions: full_screen,
                         uvs: ctx
                             .resources
                             .sprites_metadata
@@ -275,11 +284,23 @@ impl BadEnd {
                     &ctx.resources.sprites,
                 );
                 self.map.render_player(&self.player, &mut ctx);
-                ctx.g.set_camera(
-                    solstice_2d::Transform2D::scale(3., 3.)
-                        * solstice_2d::Transform2D::translation(45., 25.),
-                );
+
+                ctx.g
+                    .set_shader(Some(ctx.resources.shaders.vignette.clone()));
+                ctx.g.draw(full_screen);
+                ctx.g.set_shader(None);
+
+                let offset = solstice_2d::Transform2D::translation(25., 0.);
+                let inner = solstice_2d::Transform2D::scale(0.9, 0.9);
+                let outer = solstice_2d::Transform2D::scale(0.92, 0.92);
+                ctx.g.set_camera(outer * offset);
+                ctx.g.set_color([0., 0., 0., 1.]);
                 self.shodan_text.draw(&mut ctx);
+                ctx.g.set_camera(inner * offset);
+                ctx.g.set_color(Color::from_bytes(255, 75, 50, 255));
+                self.shodan_text.draw(&mut ctx);
+                ctx.g.set_color([1., 1., 1., 1.]);
+                ctx.g.set_camera(solstice_2d::Transform3D::default());
             }
         }
 
@@ -362,6 +383,8 @@ fn feistel(input: u8) -> u8 {
 }
 
 mod text {
+    use rand::Rng;
+
     pub enum TextCommandType {
         Text(String),
         Fn(fn(f32) -> String),
@@ -401,6 +424,13 @@ mod text {
         }
     }
 
+    #[derive(PartialEq, Debug)]
+    struct TextSection<'a> {
+        text: std::borrow::Cow<'a, str>,
+        x: f32,
+        y: f32,
+    }
+
     pub struct TextShower {
         chars_per_sec: f32,
         pub time: std::time::Duration,
@@ -431,9 +461,9 @@ mod text {
             self.elapsed += dt;
         }
 
-        pub fn draw<'a>(&'a self, ctx: &mut crate::state::StateContext<'_, '_, 'a>) {
+        fn to_show(&self) -> impl Iterator<Item = TextSection> + '_ {
             let mut t = self.elapsed.as_secs_f32();
-            for command in self.commands.iter() {
+            self.commands.iter().filter_map(move |command| {
                 let text = match &command.ty {
                     TextCommandType::Text(text) => {
                         std::borrow::Cow::Borrowed(&text[0..self.length_to_show(text, t)])
@@ -443,26 +473,76 @@ mod text {
                         std::borrow::Cow::Owned(text[0..self.length_to_show(&text, t)].to_owned())
                     }
                 };
-                let [width, height] = [16. * 64., 16. * 64.];
                 t = (t - text.len() as f32 / self.chars_per_sec).max(0.);
+                if text.len() > 0 {
+                    Some(TextSection {
+                        text,
+                        x: command.x,
+                        y: command.y,
+                    })
+                } else {
+                    None
+                }
+            })
+        }
+
+        pub fn draw<'a>(&'a self, ctx: &mut crate::state::StateContext<'_, '_, 'a>) {
+            let [width, height] = [16. * 64., 16. * 64.];
+            for section in self.to_show() {
                 ctx.g.print(
-                    text,
-                    ctx.resources.debug_font,
-                    16.,
+                    section.text,
+                    ctx.resources.pixel_font,
+                    16. * 4.,
                     solstice_2d::Rectangle {
-                        x: command.x / 3.,
-                        y: command.y / 3.,
-                        width: width / 3.,
-                        height: height / 3.,
+                        x: section.x,
+                        y: section.y,
+                        width,
+                        height,
                     },
                 );
             }
         }
 
         fn length_to_show(&self, text: &str, t: f32) -> usize {
-            let len = text.len();
-            let shown = (t * len as f32).floor() as usize;
-            shown.min(len)
+            let shown = (t * self.chars_per_sec).floor() as usize;
+            shown.min(text.len())
+        }
+    }
+
+    pub fn lerp_string<'a>(from: &'a str, to: &'a str, ratio: f32) -> std::borrow::Cow<'a, str> {
+        if ratio <= 0. {
+            return from.into();
+        }
+        if ratio >= 1. {
+            return to.into();
+        }
+
+        let uppercase_ascii = 65u8..=90;
+        let mut r: rand::rngs::SmallRng = rand::SeedableRng::seed_from_u64((ratio * 80.) as u64);
+
+        if ratio < (1. / 3.) {
+            let to_change = (from.len() as f32 * ratio * 3.).floor() as usize;
+            let mut s = String::new();
+            for _i in 0..to_change {
+                s.push(r.gen_range(uppercase_ascii.clone()) as char);
+            }
+            s.push_str(&from[to_change..]);
+            s.into()
+        } else if ratio < (2. / 3.) {
+            let length = from.len()
+                + ((to.len() as f32 - from.len() as f32) * (ratio * 3.).fract()).floor() as usize;
+            (0..length)
+                .map(|_| r.gen_range(uppercase_ascii.clone()) as char)
+                .collect::<String>()
+                .into()
+        } else {
+            let to_change = (to.len() as f32 * (ratio * 3.).fract()).floor() as usize;
+            let mut s = String::new();
+            s.push_str(&to[0..to_change]);
+            for _ in to_change..to.len() {
+                s.push(r.gen_range(uppercase_ascii.clone()) as char);
+            }
+            s.into()
         }
     }
 
@@ -487,8 +567,57 @@ mod text {
                         v[0..l].to_string()
                     }),
                 },
+                TextCommand {
+                    x: 1.,
+                    y: 2.,
+                    ty: TextCommandType::Fn(|t| format!("t: {:.2}", t)),
+                },
             ];
+            let one_sec = std::time::Duration::from_secs(1);
             let mut text = TextShower::new(1., commands);
+            assert_eq!(
+                text.length_to_show("This is a test", one_sec.as_secs_f32()),
+                1
+            );
+            assert_eq!(text.to_show().count(), 0);
+
+            text.update(one_sec);
+            assert_eq!(
+                text.to_show().next(),
+                Some(TextSection {
+                    text: "T".into(),
+                    x: 0.0,
+                    y: 0.0
+                })
+            );
+            text.update(one_sec * 14);
+            {
+                let mut iter = text.to_show();
+                assert_eq!(
+                    iter.next(),
+                    Some(TextSection {
+                        text: "This is a test.".into(),
+                        x: 0.0,
+                        y: 0.0
+                    })
+                );
+                assert_eq!(iter.next(), None);
+            }
+
+            text.update(one_sec);
+            {
+                let mut iter = text.to_show();
+                assert!(iter.next().is_some());
+                assert_eq!(
+                    iter.next(),
+                    Some(TextSection {
+                        text: "a".into(),
+                        x: 10.,
+                        y: 230.,
+                    })
+                );
+                assert!(iter.next().is_none());
+            }
         }
     }
 }
