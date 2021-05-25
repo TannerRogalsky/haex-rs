@@ -93,7 +93,11 @@ pub struct ImageData {
 }
 
 impl ImageData {
-    fn try_into_image(self, ctx: &mut Context) -> eyre::Result<solstice::image::Image> {
+    fn try_into_image(
+        self,
+        ctx: &mut Context,
+        nearest: bool,
+    ) -> eyre::Result<solstice::image::Image> {
         use solstice::{
             image::{Image, Settings},
             texture::TextureType,
@@ -104,6 +108,16 @@ impl ImageData {
             height,
             format,
         } = self;
+        let settings = Settings {
+            mipmaps: false,
+            filter: if nearest {
+                solstice::texture::FilterMode::Nearest.into()
+            } else {
+                solstice::texture::FilterMode::Linear.into()
+            },
+            wrap: solstice::texture::WrapMode::Repeat.into(),
+            ..Default::default()
+        };
         let img = match data {
             ImageDataRepr::Bytes(data) => Image::with_data(
                 ctx,
@@ -112,11 +126,7 @@ impl ImageData {
                 width,
                 height,
                 &data,
-                Settings {
-                    mipmaps: false,
-                    wrap: solstice::texture::WrapMode::Repeat.into(),
-                    ..Default::default()
-                },
+                settings,
             )?,
             #[cfg(target_arch = "wasm32")]
             ImageDataRepr::ImageElement(data) => Image::with_html_image(
@@ -126,11 +136,7 @@ impl ImageData {
                 width,
                 height,
                 &data,
-                Settings {
-                    mipmaps: false,
-                    wrap: solstice::texture::WrapMode::Repeat.into(),
-                    ..Default::default()
-                },
+                settings,
             )?,
         };
         Ok(img)
@@ -145,6 +151,7 @@ pub struct Resources {
     pub sprites_metadata: SpriteSheet,
     pub aesthetic_shader_src: String,
     pub menu_shader_src: String,
+    pub vignette_shader_src: String,
     pub music: crate::audio::StreamingAudioSource,
 }
 
@@ -158,8 +165,8 @@ impl Resources {
         Ok(LoadedResources {
             debug_font: gfx.add_font(self.debug_font_data.try_into()?),
             pixel_font: gfx.add_font(self.pixel_font_data.try_into()?),
-            sprites: self.sprites_data.try_into_image(ctx)?,
-            noise: self.noise_data.try_into_image(ctx)?,
+            sprites: self.sprites_data.try_into_image(ctx, true)?,
+            noise: self.noise_data.try_into_image(ctx, false)?,
             sprites_metadata: {
                 let src_dim = self.sprites_metadata.meta.size.clone();
                 self.sprites_metadata
@@ -174,6 +181,7 @@ impl Resources {
             shaders: Shaders {
                 aesthetic: solstice_2d::Shader::with(&self.aesthetic_shader_src, ctx)?,
                 menu: solstice_2d::Shader::with(&self.menu_shader_src, ctx)?,
+                vignette: solstice_2d::Shader::with(&self.vignette_shader_src, ctx)?,
             },
             music: self.music,
         })
@@ -183,6 +191,7 @@ impl Resources {
 pub struct Shaders {
     pub aesthetic: solstice_2d::Shader,
     pub menu: solstice_2d::Shader,
+    pub vignette: solstice_2d::Shader,
 }
 
 impl Shaders {

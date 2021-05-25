@@ -27,6 +27,7 @@ fn main() -> eyre::Result<()> {
         )?)?,
         aesthetic_shader_src: std::fs::read_to_string(shaders_folder.join("aesthetic.glsl"))?,
         menu_shader_src: std::fs::read_to_string(shaders_folder.join("menu.glsl"))?,
+        vignette_shader_src: std::fs::read_to_string(shaders_folder.join("vignette.glsl"))?,
         music: audio::StreamingAudioSource::from_data(std::sync::Arc::new(std::fs::read(
             sounds_folder.join("music.ogg"),
         )?)),
