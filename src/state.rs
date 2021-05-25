@@ -140,11 +140,7 @@ fn overlay<'a>(
     let [tw, th] = map.tile_size;
     let [half_w, half_h] = [tw / 2., th / 2.];
 
-    let uv_bounds = ctx
-        .resources
-        .sprites_metadata
-        .get("boss_contrast.png")
-        .unwrap();
+    let uv_bounds = ctx.resources.sprites_metadata.boss_contrast;
     let (u1, v1) = (uv_bounds.uvs.x, uv_bounds.uvs.y);
     let (uw, uh) = (uv_bounds.uvs.width, uv_bounds.uvs.height);
 
@@ -324,7 +320,7 @@ impl Map {
             tile_width,
             tile_height,
             &map,
-            &ctx.resources.sprites_metadata,
+            &ctx.resources.sprites_metadata_raw,
         );
         let mut sp =
             solstice_2d::solstice::quad_batch::QuadBatch::new(ctx.g.ctx_mut(), batch.len())?;
@@ -387,7 +383,7 @@ impl std::default::Default for State {
 
 impl State {
     pub fn new(_ctx: StateContext) -> Result<Self, solstice_2d::GraphicsError> {
-        // Ok(Self::BadEnd(bad_end::BadEnd::new(ctx)?))
+        // Ok(Self::BadEnd(bad_end::BadEnd::new(_ctx)?))
         Ok(Self::Menu(menu::Menu::new()))
     }
 

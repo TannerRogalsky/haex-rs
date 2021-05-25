@@ -248,72 +248,9 @@ impl Game {
     }
 }
 
-use quads::{Quads, UVRect};
+use quads::UVRect;
 mod quads {
     use solstice_2d::Vertex2D;
-
-    #[derive(Clone, PartialEq)]
-    pub struct Quads<'a> {
-        metadata: &'a crate::resources::Tiles,
-        vertices: Vec<Vertex2D>,
-        count: usize,
-    }
-
-    impl<'a> Quads<'a> {
-        pub fn new(metadata: &'a crate::resources::Tiles) -> Self {
-            Self {
-                metadata,
-                vertices: vec![],
-                count: 0,
-            }
-        }
-
-        pub fn add(&mut self, position: solstice_2d::Rectangle, name: &str) {
-            if let Some(uvs) = self.metadata.get(name) {
-                type Quad = solstice_2d::solstice::quad_batch::Quad<(f32, f32)>;
-                let quad = Quad::from(position)
-                    .zip(Quad::from(uvs.uvs))
-                    .map(|((x, y), (s, t))| Vertex2D {
-                        position: [x, y],
-                        uv: [s, t],
-                        ..Default::default()
-                    });
-                self.vertices.extend_from_slice(&quad.vertices);
-                self.count += 1;
-            }
-        }
-
-        pub fn clear(&mut self) {
-            self.count = 0;
-            self.vertices.clear();
-        }
-    }
-
-    impl From<Quads<'_>> for solstice_2d::Geometry<'_, Vertex2D> {
-        fn from(quads: Quads<'_>) -> Self {
-            let indices = (0..quads.count)
-                .flat_map(|i| {
-                    let offset = i as u32 * 4;
-                    std::array::IntoIter::new(solstice_2d::solstice::quad_batch::INDICES)
-                        .map(move |i| i as u32 + offset)
-                })
-                .collect::<Vec<_>>();
-            solstice_2d::Geometry::new(quads.vertices, Some(indices))
-        }
-    }
-
-    impl<'a> From<&'a Quads<'_>> for solstice_2d::Geometry<'a, Vertex2D> {
-        fn from(quads: &'a Quads<'_>) -> Self {
-            let indices = (0..quads.count)
-                .flat_map(|i| {
-                    let offset = i as u32 * 4;
-                    std::array::IntoIter::new(solstice_2d::solstice::quad_batch::INDICES)
-                        .map(move |i| i as u32 + offset)
-                })
-                .collect::<Vec<_>>();
-            solstice_2d::Geometry::new(&quads.vertices, Some(indices))
-        }
-    }
 
     #[derive(Copy, Clone, PartialEq)]
     pub struct UVRect {

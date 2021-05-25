@@ -18,17 +18,6 @@ impl Menu {
     }
 
     pub fn render<'a>(&'a mut self, mut ctx: StateContext<'a, '_, 'a>) {
-        let mut quads = crate::Quads::new(&ctx.resources.sprites_metadata);
-        quads.add(
-            Rectangle {
-                x: 0.0,
-                y: 0.0,
-                width: 256.,
-                height: 256.,
-            },
-            "boss_contrast.png",
-        );
-
         let viewport = ctx.g.ctx_mut().viewport().clone();
         const BLACK: Color = Color::new(0., 0., 0., 1.);
 
@@ -37,8 +26,24 @@ impl Menu {
 
         g.set_canvas(Some(ctx.aesthetic_canvas.clone()));
         g.clear(BLACK);
+        let full_screen = {
+            let (width, height) = ctx.aesthetic_canvas.dimensions();
+            solstice_2d::Rectangle {
+                x: 0.0,
+                y: 0.0,
+                width,
+                height,
+            }
+        };
+
         g.set_shader(Some(ctx.resources.shaders.menu.clone()));
-        g.image(quads.clone(), &ctx.resources.sprites);
+        g.image(
+            crate::UVRect {
+                positions: full_screen,
+                uvs: ctx.resources.sprites_metadata.boss_contrast.uvs,
+            },
+            &ctx.resources.sprites,
+        );
 
         g.set_shader(None);
         {
@@ -102,44 +107,51 @@ impl Menu {
             g.draw(solstice_2d::Geometry::new(vertices, Some(indices)));
         }
 
-        quads.clear();
-        quads.add(
-            Rectangle {
-                x: 256. / 2. - 256. / 4. / 2.,
-                y: 256. * 0.65,
-                width: 256. / 4.,
-                height: 256. * 0.2,
+        g.image(
+            crate::UVRect {
+                positions: Rectangle {
+                    x: 256. / 2. - 256. / 4. / 2.,
+                    y: 256. * 0.65,
+                    width: 256. / 4.,
+                    height: 256. * 0.2,
+                },
+                uvs: ctx.resources.sprites_metadata.title_title.uvs,
             },
-            "title_title.png",
+            &ctx.resources.sprites,
         );
-        quads.add(
-            Rectangle {
-                x: 256. / 2. - 256. / 4. / 2.,
-                y: 256. * 0.825,
-                width: 256. / 4.,
-                height: 256. * 0.075,
+        g.image(
+            crate::UVRect {
+                positions: Rectangle {
+                    x: 256. / 2. - 256. / 4. / 2.,
+                    y: 256. * 0.825,
+                    width: 256. / 4.,
+                    height: 256. * 0.075,
+                },
+                uvs: ctx.resources.sprites_metadata.title_arrow.uvs,
             },
-            "title_arrow.png",
+            &ctx.resources.sprites,
         );
         let names = [
-            "title_kyle_white.png",
-            "title_ryan_white.png",
-            "title_tanner_white.png",
+            ctx.resources.sprites_metadata.title_kyle_white.uvs,
+            ctx.resources.sprites_metadata.title_ryan_white.uvs,
+            ctx.resources.sprites_metadata.title_tanner_white.uvs,
         ];
-        for (i, name) in std::array::IntoIter::new(names).enumerate() {
+        for (i, uvs) in std::array::IntoIter::new(names).enumerate() {
             let w = 256. / 3.;
             let x = w * i as f32;
-            quads.add(
-                Rectangle {
-                    x: x,
-                    y: 256. * 0.91,
-                    width: w,
-                    height: 256. * 0.1,
+            g.image(
+                crate::UVRect {
+                    positions: Rectangle {
+                        x,
+                        y: 256. * 0.91,
+                        width: w,
+                        height: 256. * 0.1,
+                    },
+                    uvs,
                 },
-                name,
+                &ctx.resources.sprites,
             );
         }
-        g.image(quads, &ctx.resources.sprites);
 
         g.set_canvas(None);
         g.set_shader(Some({

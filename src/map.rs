@@ -230,7 +230,7 @@ pub fn create_batch(
     tile_width: f32,
     tile_height: f32,
     grid: &DirectionGrid,
-    tiles: &crate::resources::Tiles,
+    tiles: &std::collections::HashMap<String, crate::UVRect>,
 ) -> Vec<solstice_2d::solstice::quad_batch::Quad<solstice_2d::Vertex2D>> {
     use solstice_2d::solstice::{quad_batch::Quad, viewport::Viewport};
 

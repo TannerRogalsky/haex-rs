@@ -26,7 +26,7 @@ impl BadEnd {
         let height = 16;
         let grid = map_gen(width, height);
 
-        let tiles = crate::map::create_batch(64., 64., &grid, &ctx.resources.sprites_metadata);
+        let tiles = crate::map::create_batch(64., 64., &grid, &ctx.resources.sprites_metadata_raw);
         let mut batch = QuadBatch::new(ctx.g.ctx_mut(), width * height)?;
         for tile in tiles {
             batch.push(tile);
@@ -165,17 +165,6 @@ impl BadEnd {
 
         const BLACK: Color = Color::new(0., 0., 0., 1.);
 
-        let mut quads = crate::Quads::new(&ctx.resources.sprites_metadata);
-        quads.add(
-            solstice_2d::Rectangle {
-                x: 0.0,
-                y: 0.0,
-                width: 256.,
-                height: 256.,
-            },
-            "boss_contrast.png",
-        );
-
         ctx.g.clear(BLACK);
 
         ctx.g.set_canvas(Some(ctx.canvas.clone()));
@@ -205,12 +194,8 @@ impl BadEnd {
             EndState::FadeToSequence(_) => {
                 self.map.render(&self.player, &mut ctx);
 
-                let boss = ctx.resources.sprites_metadata.get("boss_body.png").unwrap();
-                let boss_accent = ctx
-                    .resources
-                    .sprites_metadata
-                    .get("boss_color.png")
-                    .unwrap();
+                let boss = ctx.resources.sprites_metadata.boss_body;
+                let boss_accent = ctx.resources.sprites_metadata.boss_color;
 
                 for (show, coord) in self.boss_show.iter() {
                     if *show {
@@ -262,24 +247,14 @@ impl BadEnd {
                 ctx.g.image(
                     crate::UVRect {
                         positions: full_screen,
-                        uvs: ctx
-                            .resources
-                            .sprites_metadata
-                            .get("boss_body.png")
-                            .unwrap()
-                            .uvs,
+                        uvs: ctx.resources.sprites_metadata.boss_body.uvs,
                     },
                     &ctx.resources.sprites,
                 );
                 ctx.g.image(
                     crate::UVRect {
                         positions: full_screen,
-                        uvs: ctx
-                            .resources
-                            .sprites_metadata
-                            .get("boss_color.png")
-                            .unwrap()
-                            .uvs,
+                        uvs: ctx.resources.sprites_metadata.boss_color.uvs,
                     },
                     &ctx.resources.sprites,
                 );
@@ -308,8 +283,24 @@ impl BadEnd {
         g.set_canvas(Some(ctx.aesthetic_canvas.clone()));
         g.clear(BLACK);
 
+        let full_screen = {
+            let (width, height) = ctx.aesthetic_canvas.dimensions();
+            solstice_2d::Rectangle {
+                x: 0.0,
+                y: 0.0,
+                width,
+                height,
+            }
+        };
+
         g.set_shader(Some(ctx.resources.shaders.menu.clone()));
-        g.image(quads.clone(), &ctx.resources.sprites);
+        g.image(
+            crate::UVRect {
+                positions: full_screen,
+                uvs: ctx.resources.sprites_metadata.boss_contrast.uvs,
+            },
+            &ctx.resources.sprites,
+        );
         g.set_shader(None);
 
         g.set_camera(camera.transform);

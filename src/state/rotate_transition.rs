@@ -40,19 +40,24 @@ fn render<'a>(
 
         g.set_canvas(Some(ctx.aesthetic_canvas.clone()));
         g.clear(BLACK);
-        let mut quads = crate::Quads::new(&ctx.resources.sprites_metadata);
-        quads.add(
+        let full_screen = {
+            let (width, height) = ctx.aesthetic_canvas.dimensions();
             solstice_2d::Rectangle {
                 x: 0.0,
                 y: 0.0,
-                width: 256.,
-                height: 256.,
-            },
-            "boss_contrast.png",
-        );
-        g.set_shader(Some(ctx.resources.shaders.menu.clone()));
-        g.image(quads.clone(), &ctx.resources.sprites);
+                width,
+                height,
+            }
+        };
 
+        g.set_shader(Some(ctx.resources.shaders.menu.clone()));
+        g.image(
+            crate::UVRect {
+                positions: full_screen,
+                uvs: ctx.resources.sprites_metadata.boss_contrast.uvs,
+            },
+            &ctx.resources.sprites,
+        );
         g.set_shader(None);
         g.set_canvas(None);
     }

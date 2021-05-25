@@ -22,7 +22,7 @@ impl NopSlide {
 
         let step = std::time::Duration::from_secs_f32(0.1);
         let id = state.ctx.cron.every(step, move |ctx: &mut CronContext| {
-            let tiles = &ctx.shared.resources.sprites_metadata;
+            let tiles = &ctx.shared.resources.sprites_metadata_raw;
             match &mut ctx.game_state {
                 Some(State::Main(main)) => {
                     let mut changed = false;
