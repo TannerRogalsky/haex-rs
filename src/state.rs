@@ -16,6 +16,25 @@ pub struct StateContext<'a, 'b, 'c> {
     pub cron: &'a mut crate::cron::Cron<crate::CronContext>,
     pub maps: &'a crate::MapProgression,
     pub time: std::time::Duration,
+    pub audio_sinks: &'a mut Option<crate::AudioSinks>,
+}
+
+impl StateContext<'_, '_, '_> {
+    pub fn sinks(&mut self) -> &crate::AudioSinks {
+        let audio_ctx = &self.audio_ctx;
+        let resources = &self.resources.audio;
+        self.audio_sinks.get_or_insert_with(|| crate::AudioSinks {
+            agent_smith_laugh: audio_ctx
+                .play_new(resources.agent_smith_laugh.clone())
+                .unwrap(),
+            last_level_drone: audio_ctx
+                .play_new(resources.last_level_drone.clone())
+                .unwrap(),
+            level_finish: audio_ctx.play_new(resources.level_finish.clone()).unwrap(),
+            music: audio_ctx.play_new(resources.music.clone()).unwrap(),
+            quote: audio_ctx.play_new(resources.quote.clone()).unwrap(),
+        })
+    }
 }
 
 // pub struct MapSettings {

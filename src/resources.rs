@@ -143,6 +143,14 @@ impl ImageData {
     }
 }
 
+pub struct Audio {
+    pub agent_smith_laugh: crate::audio::StreamingAudioSource,
+    pub last_level_drone: crate::audio::StreamingAudioSource,
+    pub level_finish: crate::audio::StreamingAudioSource,
+    pub music: crate::audio::StreamingAudioSource,
+    pub quote: crate::audio::StreamingAudioSource,
+}
+
 pub struct Resources {
     pub debug_font_data: Vec<u8>,
     pub pixel_font_data: Vec<u8>,
@@ -152,7 +160,7 @@ pub struct Resources {
     pub aesthetic_shader_src: String,
     pub menu_shader_src: String,
     pub vignette_shader_src: String,
-    pub music: crate::audio::StreamingAudioSource,
+    pub audio: Audio,
 }
 
 impl Resources {
@@ -187,7 +195,7 @@ impl Resources {
                 menu: solstice_2d::Shader::with(&self.menu_shader_src, ctx)?,
                 vignette: solstice_2d::Shader::with(&self.vignette_shader_src, ctx)?,
             },
-            music: self.music,
+            audio: self.audio,
         })
     }
 }
@@ -271,5 +279,5 @@ pub struct LoadedResources {
     pub sprites_metadata: Sprites,
     pub sprites_metadata_raw: std::collections::HashMap<String, crate::UVRect>,
     pub shaders: Shaders,
-    pub music: crate::audio::StreamingAudioSource,
+    pub audio: Audio,
 }

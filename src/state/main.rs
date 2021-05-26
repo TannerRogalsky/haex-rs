@@ -120,6 +120,8 @@ impl Main {
                 if grid_pos == target {
                     let seed = ctx.time.as_millis() as u64;
                     if let Some(progression) = &self.progression.exit {
+                        let sound = ctx.sinks().level_finish.clone();
+                        ctx.audio_ctx.play(&sound);
                         match progression {
                             ProgressionType::Standard(settings) => {
                                 if let Ok(to) =

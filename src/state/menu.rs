@@ -230,7 +230,7 @@ impl Menu {
 
     pub fn handle_mouse_event(
         &mut self,
-        ctx: StateContext,
+        mut ctx: StateContext,
         event: crate::MouseEvent,
     ) -> Option<State> {
         match event {
@@ -239,9 +239,9 @@ impl Menu {
                     match button {
                         MouseButton::Left => {
                             if self.music.is_none() {
-                                self.music =
-                                    ctx.audio_ctx.play_new(ctx.resources.music.clone()).ok();
-                                ctx.audio_ctx.set_global_volume(0.);
+                                let music = ctx.sinks().music.clone();
+                                ctx.audio_ctx.play(&music);
+                                self.music = Some(music);
                             }
                             let viewport = ctx.g.gfx().viewport();
                             let mouse =

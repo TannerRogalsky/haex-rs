@@ -14,12 +14,31 @@ mod web {
         inner: web_sys::HtmlMediaElement,
     }
 
+    // impl Clone for StreamingAudioSource {
+    //     fn clone(&self) -> Self {
+    //         use wasm_bindgen::JsCast;
+    //         let src = self.inner.current_src();
+    //
+    //         let inner = web_sys::window()
+    //             .expect("window should exist")
+    //             .document()
+    //             .expect("document should exist")
+    //             .create_element("audio")
+    //             .expect("should create audio element")
+    //             .dyn_into::<web_sys::HtmlMediaElement>()
+    //             .expect("should be an audio element");
+    //         inner.set_src(&src);
+    //         Self { inner }
+    //     }
+    // }
+
     impl StreamingAudioSource {
         pub fn from_element(element: web_sys::HtmlMediaElement) -> Self {
             Self { inner: element }
         }
     }
 
+    #[derive(Clone, Eq, PartialEq)]
     pub struct Sink {
         source: StreamingAudioSource,
         _node: web_sys::MediaElementAudioSourceNode,
@@ -40,6 +59,12 @@ mod web {
             gain.connect_with_audio_node(&ctx.destination()).unwrap();
             gain.gain().set_value(0.);
             Self { ctx, gain }
+        }
+    }
+
+    impl Drop for InnerContext {
+        fn drop(&mut self) {
+            let _r = self.ctx.close();
         }
     }
 
@@ -68,7 +93,7 @@ mod web {
                 .create_media_element_source(&source.inner)
                 .unwrap();
             node.connect_with_audio_node(&self.ctx.gain).unwrap();
-            let _r = source.inner.play();
+            // let _r = source.inner.play();
             Ok(Sink {
                 source,
                 _node: node,
@@ -82,25 +107,34 @@ mod web {
         pub fn play(&self, sink: &Sink) {
             let _r = sink.source.inner.play();
         }
+
+        pub fn stop(&self, sink: &Sink) {
+            let _r = sink.source.inner.pause();
+            sink.source.inner.set_current_time(0.);
+        }
     }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 mod native {
-    use cursor::CursorOverShared;
-
     // pub struct StaticAudioSource<S: rodio::Sample> {
     //     inner: Vec<S>,
     // }
 
     #[derive(Debug, Clone, Eq, PartialEq)]
     pub struct StreamingAudioSource {
-        inner: std::sync::Arc<Vec<u8>>,
+        inner: std::sync::Arc<[u8]>,
     }
 
     impl StreamingAudioSource {
-        pub fn from_data(data: std::sync::Arc<Vec<u8>>) -> Self {
-            Self { inner: data }
+        pub fn from_data(data: Vec<u8>) -> Self {
+            Self { inner: data.into() }
+        }
+    }
+
+    impl AsRef<[u8]> for StreamingAudioSource {
+        fn as_ref(&self) -> &[u8] {
+            self.inner.as_ref()
         }
     }
 
@@ -112,9 +146,10 @@ mod native {
     }
 
     enum Command {
-        PlayNew(Sink, rodio::Decoder<CursorOverShared<Vec<u8>>>),
+        PlayNew(Sink, StreamingAudioSource),
         Play(Sink),
         Pause(Sink),
+        Stop(Sink),
         SetGlobalVolume(f32),
     }
 
@@ -123,26 +158,55 @@ mod native {
     impl AudioContext {
         pub fn new() -> Self {
             let (sx, rx) = std::sync::mpsc::channel();
+            let mut volume = 0.;
+
             let _thread_handle = std::thread::spawn(move || {
                 let mut sinks = std::collections::BTreeMap::new();
+                let mut sources = std::collections::BTreeMap::new();
                 let (_stream, stream_handle) = rodio::OutputStream::try_default()?;
 
                 while let Ok(cmd) = rx.recv() {
                     match cmd {
-                        Command::PlayNew(id, source) => {
+                        Command::PlayNew(id, data) => {
+                            let cursor = std::io::Cursor::new(data.clone());
+                            let source = rodio::Decoder::new(cursor)?;
                             let sink = rodio::Sink::try_new(&stream_handle)?;
+                            sink.pause();
+                            sink.set_volume(volume);
                             sink.append(source);
                             sinks.insert(id, sink);
+                            sources.insert(id, data);
                         }
                         Command::Pause(id) => {
                             sinks.get(&id).map(rodio::Sink::pause);
                         }
                         Command::Play(id) => {
-                            sinks.get(&id).map(rodio::Sink::play);
+                            if let Some(sink) = sinks.get(&id) {
+                                if sink.empty() {
+                                    if let Some(data) = sources.get(&id) {
+                                        let cursor = std::io::Cursor::new(data.clone());
+                                        let source = rodio::Decoder::new(cursor)?;
+                                        sink.append(source);
+                                    }
+                                }
+                                sink.play();
+                            }
                         }
-                        Command::SetGlobalVolume(volume) => {
+                        Command::Stop(id) => {
+                            let sink = sinks.get_mut(&id);
+                            let data = sources.get(&id);
+                            if let Some((sink, data)) = sink.zip(data) {
+                                sink.stop();
+
+                                let cursor = std::io::Cursor::new(data.clone());
+                                let source = rodio::Decoder::new(cursor)?;
+                                sink.append(source);
+                            }
+                        }
+                        Command::SetGlobalVolume(new_volume) => {
+                            volume = new_volume;
                             for sink in sinks.values() {
-                                sink.set_volume(volume);
+                                sink.set_volume(new_volume);
                             }
                         }
                     }
@@ -155,7 +219,7 @@ mod native {
                 sender: sx,
                 _thread_handle,
                 sink_id: Default::default(),
-                volume: 0.0,
+                volume,
             }
         }
 
@@ -170,9 +234,6 @@ mod native {
         }
 
         pub fn play_new(&self, source: StreamingAudioSource) -> eyre::Result<Sink> {
-            let data = std::io::Cursor::new(source.inner);
-            let data = CursorOverShared::new(data);
-            let source = rodio::Decoder::new(data)?;
             let order = std::sync::atomic::Ordering::SeqCst;
             let id = self.sink_id.fetch_add(1, order);
             self.sender.send(Command::PlayNew(id, source))?;
@@ -187,117 +248,12 @@ mod native {
             let _r = self.sender.send(Command::Play(*sink));
         }
 
+        pub fn stop(&self, sink: &Sink) {
+            let _r = self.sender.send(Command::Stop(*sink));
+        }
+
         // pub fn play_looped(&mut self, source: StreamingAudioSource) -> Result<Sink, PlayError> {
         //     let source = rodio::decoder::LoopedDecoder
         // }
-    }
-
-    mod cursor {
-        use std::io::{BufRead, IoSliceMut, Read, Seek, SeekFrom};
-
-        pub struct CursorOverShared<T> {
-            inner: std::io::Cursor<std::sync::Arc<T>>,
-        }
-
-        impl<T> CursorOverShared<T> {
-            pub fn new(cursor: std::io::Cursor<std::sync::Arc<T>>) -> Self {
-                Self { inner: cursor }
-            }
-        }
-
-        impl<T> Seek for CursorOverShared<T>
-        where
-            T: AsRef<[u8]>,
-        {
-            fn seek(&mut self, style: SeekFrom) -> std::io::Result<u64> {
-                let (base_pos, offset) = match style {
-                    SeekFrom::Start(n) => {
-                        self.inner.set_position(n);
-                        return Ok(n);
-                    }
-                    SeekFrom::End(n) => (self.inner.get_ref().as_ref().as_ref().len() as u64, n),
-                    SeekFrom::Current(n) => (self.inner.position(), n),
-                };
-                let new_pos = if offset >= 0 {
-                    base_pos.checked_add(offset as u64)
-                } else {
-                    base_pos.checked_sub((offset.wrapping_neg()) as u64)
-                };
-                match new_pos {
-                    Some(n) => {
-                        self.inner.set_position(n);
-                        Ok(n)
-                    }
-                    None => Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidInput,
-                        "invalid seek to a negative or overflowing position",
-                    )),
-                }
-            }
-
-            fn stream_position(&mut self) -> std::io::Result<u64> {
-                Ok(self.inner.position())
-            }
-        }
-
-        impl<T> Read for CursorOverShared<T>
-        where
-            T: AsRef<[u8]>,
-        {
-            fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-                let n = Read::read(&mut self.fill_buf()?, buf)?;
-                self.inner.set_position(self.inner.position() + n as u64);
-                Ok(n)
-            }
-
-            fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> std::io::Result<usize> {
-                let mut nread = 0;
-                for buf in bufs {
-                    let n = self.read(buf)?;
-                    nread += n;
-                    if n < buf.len() {
-                        break;
-                    }
-                }
-                Ok(nread)
-            }
-
-            fn read_exact(&mut self, buf: &mut [u8]) -> std::io::Result<()> {
-                let n = buf.len();
-                Read::read_exact(&mut self.fill_buf()?, buf)?;
-                self.inner.set_position(self.inner.position() + n as u64);
-                Ok(())
-            }
-        }
-
-        impl<T> BufRead for CursorOverShared<T>
-        where
-            T: AsRef<[u8]>,
-        {
-            fn fill_buf(&mut self) -> std::io::Result<&[u8]> {
-                let amt = std::cmp::min(
-                    self.inner.position(),
-                    self.inner.get_ref().as_ref().as_ref().len() as u64,
-                );
-                Ok(&self.inner.get_ref().as_ref().as_ref()[(amt as usize)..])
-            }
-            fn consume(&mut self, amt: usize) {
-                self.inner.set_position(self.inner.position() + amt as u64);
-            }
-        }
-
-        #[cfg(test)]
-        mod tests {
-            use super::*;
-
-            #[test]
-            fn cursor_test() {
-                let data = vec![0u8, 1, 2, 3].into_boxed_slice();
-                let shared = std::sync::Arc::new(data);
-                let cursor = std::io::Cursor::new(shared.clone());
-                let cursor = CursorOverShared::new(cursor);
-                let _decoder = rodio::Decoder::new(cursor);
-            }
-        }
     }
 }

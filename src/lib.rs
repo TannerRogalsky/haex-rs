@@ -44,6 +44,14 @@ pub struct MapProgression {
     exit: Option<ProgressionType>,
 }
 
+pub struct AudioSinks {
+    pub agent_smith_laugh: crate::audio::Sink,
+    pub last_level_drone: crate::audio::Sink,
+    pub level_finish: crate::audio::Sink,
+    pub music: crate::audio::Sink,
+    pub quote: crate::audio::Sink,
+}
+
 struct Static {
     ctx: solstice_2d::solstice::Context,
     gfx: solstice_2d::Graphics,
@@ -54,6 +62,7 @@ struct Static {
     audio_ctx: audio::AudioContext,
     maps: MapProgression,
     time: std::time::Duration,
+    sinks: Option<AudioSinks>,
 }
 
 impl Static {
@@ -71,6 +80,7 @@ impl Static {
             cron,
             maps: &self.maps,
             time: self.time,
+            audio_sinks: &mut self.sinks,
         }
     }
 }
@@ -102,12 +112,20 @@ impl Game {
         let mut gfx = solstice_2d::Graphics::new(&mut ctx, width, height)?;
         let resources = resources.try_into_loaded(&mut ctx, &mut gfx)?;
 
+        let filter = solstice_2d::solstice::texture::Filter::new(
+            solstice_2d::solstice::texture::FilterMode::Nearest,
+            solstice_2d::solstice::texture::FilterMode::Nearest,
+            solstice_2d::solstice::texture::FilterMode::None,
+            0.0,
+        );
+
         let aesthetic_canvas = solstice_2d::Canvas::with_settings(
             &mut ctx,
             solstice_2d::solstice::canvas::Settings {
                 width: 256,
                 height: 256,
                 with_depth: true,
+                filter,
                 ..Default::default()
             },
         )?;
@@ -117,6 +135,7 @@ impl Game {
                 width: 1080,
                 height: 1080,
                 with_depth: false,
+                filter,
                 ..Default::default()
             },
         )?;
@@ -164,6 +183,7 @@ impl Game {
             audio_ctx,
             maps,
             time,
+            sinks: None,
         };
         let mut cron = cron::Cron::default();
         let game_state = Some(state::State::new(shared.as_ctx(&mut cron))?);

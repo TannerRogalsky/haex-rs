@@ -29,3 +29,18 @@ Movement: Up/Down/Left/Right, WASD, JKL;,
 Context switch: everything else
 
 Programs extend from user in circular menu, rotating to show movement works.
+
+## TODO
+
+* audio
+	* bad end hum
+* fix overlay w/ sparkle and line rendering
+* player state during transition
+* enemies
+	* include a "program" to help deal with them
+		* I think this means more avoidance than destruction.
+* aesthetic shader per map changes
+* finish bad ending
+	* four sentinels
+	* "explosion" shader
+	* grayscale map

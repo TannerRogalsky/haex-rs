@@ -17,6 +17,13 @@ fn main() -> eyre::Result<()> {
     let images_folder = resources_folder.join("images");
     let shaders_folder = resources_folder.join("shaders");
     let sounds_folder = resources_folder.join("sounds");
+
+    let new_audio = |path: &str| -> Result<audio::StreamingAudioSource, std::io::Error> {
+        Ok(audio::StreamingAudioSource::from_data(std::fs::read(
+            sounds_folder.join(path),
+        )?))
+    };
+
     let resources = resources::Resources {
         debug_font_data: std::fs::read(fonts_folder.join("Inconsolata-Regular.ttf"))?,
         pixel_font_data: std::fs::read(fonts_folder.join("04b03.ttf"))?,
@@ -28,9 +35,13 @@ fn main() -> eyre::Result<()> {
         aesthetic_shader_src: std::fs::read_to_string(shaders_folder.join("aesthetic.glsl"))?,
         menu_shader_src: std::fs::read_to_string(shaders_folder.join("menu.glsl"))?,
         vignette_shader_src: std::fs::read_to_string(shaders_folder.join("vignette.glsl"))?,
-        music: audio::StreamingAudioSource::from_data(std::sync::Arc::new(std::fs::read(
-            sounds_folder.join("music.ogg"),
-        )?)),
+        audio: resources::Audio {
+            agent_smith_laugh: new_audio("agent_smith_laugh.ogg")?,
+            last_level_drone: new_audio("last_level_drone.ogg")?,
+            level_finish: new_audio("level_finish.ogg")?,
+            music: new_audio("music.ogg")?,
+            quote: new_audio("quote.ogg")?,
+        },
     };
 
     let now = {

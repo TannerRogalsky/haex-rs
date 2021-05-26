@@ -54,11 +54,11 @@ impl BadEnd {
             height,
         };
 
-        let [w, h] = [width as f32 * 64., height as f32 * 64.];
-        let lh = 16. * 3.;
+        let [w, h] = [width as f32 * 64., height as f32 * 64. * 1.25];
+        let lh = 16. * 4.;
         let [die_x, die_y] = [w * 0.5, h * 0.7 + lh * 2.];
         fn hacker_text(t: f32) -> String {
-            text::lerp_string("THE MAN", "THE HACKER", t).to_string()
+            text::lerp_string("THE MAN,", "THE HACKER,", t).to_string()
         }
         let commands = vec![
             text::TextCommand::new(w * 0.1, h * 0.1, "AND THE LORD GOD COMMANDED"),
@@ -75,6 +75,13 @@ impl BadEnd {
             text::TextCommand::new(die_x, die_y, "DIE.'"),
         ];
         let shodan_text = text::TextShower::new(12., commands);
+
+        {
+            let music = ctx.sinks().music.clone();
+            let drone = ctx.sinks().last_level_drone.clone();
+            ctx.audio_ctx.stop(&music);
+            ctx.audio_ctx.play(&drone);
+        }
 
         Ok(Self {
             map,
