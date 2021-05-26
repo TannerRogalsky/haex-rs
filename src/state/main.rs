@@ -231,18 +231,9 @@ impl Main {
         self.ui_state.render(g, ctx.resources, &self.player);
 
         g.set_canvas(None);
-        g.set_shader(Some({
-            let mut shader = ctx.resources.shaders.aesthetic.clone();
-            shader.send_uniform("blockThreshold", 0.073f32);
-            shader.send_uniform("lineThreshold", 0.23f32);
-            shader.send_uniform("randomShiftScale", 0.002f32);
-            shader.send_uniform("radialScale", 0.1f32);
-            shader.send_uniform("radialBreathingScale", 0.01f32);
-            let unit = 1;
-            shader.bind_texture_at_location(&ctx.resources.noise, (unit as usize).into());
-            shader.send_uniform("tex1", unit);
-            shader
-        }));
+        g.set_shader(Some(
+            self.progression.settings.aesthetic.as_shader(ctx.resources),
+        ));
 
         {
             let d = viewport.width().min(viewport.height()) as f32;

@@ -169,6 +169,7 @@ pub struct MapGenSettings {
     pub width: usize,
     pub height: usize,
     pub programs: ProgramGenSettings,
+    pub aesthetic: crate::AestheticShader,
 }
 
 #[derive(Debug, Copy, Clone)]

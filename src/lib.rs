@@ -142,21 +142,32 @@ impl Game {
 
         let maps = MapProgression {
             settings: map::MapGenSettings {
-                width: 5,
-                height: 5,
+                width: 4,
+                height: 4,
                 programs: map::ProgramGenSettings { nop_slide_count: 0 },
+                aesthetic: Default::default(),
             },
             exit: Some(ProgressionType::Standard(Box::new(MapProgression {
                 settings: map::MapGenSettings {
-                    width: 10,
-                    height: 10,
+                    width: 8,
+                    height: 8,
                     programs: map::ProgramGenSettings { nop_slide_count: 0 },
+                    aesthetic: AestheticShader {
+                        block_threshold: 0.093,
+                        line_threshold: 0.33,
+                        ..Default::default()
+                    },
                 },
                 exit: Some(ProgressionType::Standard(Box::new(MapProgression {
                     settings: map::MapGenSettings {
-                        width: 10,
-                        height: 10,
+                        width: 16,
+                        height: 16,
                         programs: map::ProgramGenSettings { nop_slide_count: 0 },
+                        aesthetic: AestheticShader {
+                            block_threshold: 0.11,
+                            line_threshold: 0.39,
+                            ..Default::default()
+                        },
                     },
                     exit: Some(ProgressionType::BadEnding),
                 }))),
@@ -265,6 +276,61 @@ impl Game {
             .ctx
             .set_viewport(0, 0, width as _, height as _);
         self.cron_ctx.shared.gfx.set_width_height(width, height);
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct AestheticShader {
+    pub block_threshold: f32,
+    pub line_threshold: f32,
+    pub random_shift_scale: f32,
+    pub radial_scale: f32,
+    pub radial_breathing_scale: f32,
+}
+
+impl AestheticShader {
+    pub fn lerp(&self, other: &Self, t: f32) -> Self {
+        fn lerp(v0: f32, v1: f32, t: f32) -> f32 {
+            return v0 + t * (v1 - v0);
+        }
+        Self {
+            block_threshold: lerp(self.block_threshold, other.block_threshold, t),
+            line_threshold: lerp(self.line_threshold, other.line_threshold, t),
+            random_shift_scale: lerp(self.random_shift_scale, other.random_shift_scale, t),
+            radial_scale: lerp(self.radial_scale, other.radial_scale, t),
+            radial_breathing_scale: lerp(
+                self.radial_breathing_scale,
+                other.radial_breathing_scale,
+                t,
+            ),
+        }
+    }
+}
+
+impl Default for AestheticShader {
+    fn default() -> Self {
+        Self {
+            block_threshold: 0.07,
+            line_threshold: 0.23,
+            random_shift_scale: 0.002,
+            radial_scale: 0.1,
+            radial_breathing_scale: 0.01,
+        }
+    }
+}
+
+impl AestheticShader {
+    pub fn as_shader(&self, ctx: &resources::LoadedResources) -> solstice_2d::Shader {
+        let mut shader = ctx.shaders.aesthetic.clone();
+        shader.send_uniform("blockThreshold", self.block_threshold);
+        shader.send_uniform("lineThreshold", self.line_threshold);
+        shader.send_uniform("randomShiftScale", self.random_shift_scale);
+        shader.send_uniform("radialScale", self.radial_scale);
+        shader.send_uniform("radialBreathingScale", self.radial_breathing_scale);
+        let unit = 1;
+        shader.bind_texture_at_location(&ctx.noise, (unit as usize).into());
+        shader.send_uniform("tex1", unit);
+        shader
     }
 }
 
