@@ -199,78 +199,10 @@
         </struct>
         <key>individualSpriteSettings</key>
         <map type="IndividualSpriteSettingsMap">
-            <key type="filename">../../../../lua/haex/images/title_arrow.png</key>
-            <struct type="IndividualSpriteSettings">
-                <key>pivotPoint</key>
-                <point_f>0.5,0.5</point_f>
-                <key>scale9Enabled</key>
-                <false/>
-                <key>scale9Borders</key>
-                <rect>18,4,37,9</rect>
-                <key>scale9Paddings</key>
-                <rect>18,4,37,9</rect>
-                <key>scale9FromFile</key>
-                <false/>
-            </struct>
-            <key type="filename">../../../../lua/haex/images/title_kyle.png</key>
-            <key type="filename">../../../../lua/haex/images/title_kyle_white.png</key>
-            <struct type="IndividualSpriteSettings">
-                <key>pivotPoint</key>
-                <point_f>0.5,0.5</point_f>
-                <key>scale9Enabled</key>
-                <false/>
-                <key>scale9Borders</key>
-                <rect>32,5,64,9</rect>
-                <key>scale9Paddings</key>
-                <rect>32,5,64,9</rect>
-                <key>scale9FromFile</key>
-                <false/>
-            </struct>
-            <key type="filename">../../../../lua/haex/images/title_ryan.png</key>
-            <key type="filename">../../../../lua/haex/images/title_ryan_white.png</key>
-            <struct type="IndividualSpriteSettings">
-                <key>pivotPoint</key>
-                <point_f>0.5,0.5</point_f>
-                <key>scale9Enabled</key>
-                <false/>
-                <key>scale9Borders</key>
-                <rect>22,5,45,9</rect>
-                <key>scale9Paddings</key>
-                <rect>22,5,45,9</rect>
-                <key>scale9FromFile</key>
-                <false/>
-            </struct>
-            <key type="filename">../../../../lua/haex/images/title_tanner.png</key>
-            <key type="filename">../../../../lua/haex/images/title_tanner_white.png</key>
-            <struct type="IndividualSpriteSettings">
-                <key>pivotPoint</key>
-                <point_f>0.5,0.5</point_f>
-                <key>scale9Enabled</key>
-                <false/>
-                <key>scale9Borders</key>
-                <rect>37,5,73,9</rect>
-                <key>scale9Paddings</key>
-                <rect>37,5,73,9</rect>
-                <key>scale9FromFile</key>
-                <false/>
-            </struct>
-            <key type="filename">../../../../lua/haex/images/title_title.png</key>
-            <struct type="IndividualSpriteSettings">
-                <key>pivotPoint</key>
-                <point_f>0.5,0.5</point_f>
-                <key>scale9Enabled</key>
-                <false/>
-                <key>scale9Borders</key>
-                <rect>18,11,36,21</rect>
-                <key>scale9Paddings</key>
-                <rect>18,11,36,21</rect>
-                <key>scale9FromFile</key>
-                <false/>
-            </struct>
-            <key type="filename">../../../../lua/haex/source_images/boss_alpha.png</key>
-            <key type="filename">../../../../lua/haex/source_images/boss_body.png</key>
-            <key type="filename">../../../../lua/haex/source_images/boss_color.png</key>
-            <key type="filename">../../../../lua/haex/source_images/boss_contrast.png</key>
+            <key type="filename">../../source images/boss_alpha.png</key>
+            <key type="filename">../../source images/boss_body.png</key>
+            <key type="filename">../../source images/boss_color.png</key>
+            <key type="filename">../../source images/boss_contrast.png</key>
             <struct type="IndividualSpriteSettings">
                 <key>pivotPoint</key>
                 <point_f>0.5,0.5</point_f>
@@ -283,95 +215,95 @@
                 <key>scale9FromFile</key>
                 <false/>
             </struct>
-            <key type="filename">../../../../lua/haex/source_images/enemy1_alpha.png</key>
-            <key type="filename">../../../../lua/haex/source_images/enemy1_body.png</key>
-            <key type="filename">../../../../lua/haex/source_images/enemy1_color.png</key>
-            <key type="filename">../../../../lua/haex/source_images/enemy2_alpha.png</key>
-            <key type="filename">../../../../lua/haex/source_images/enemy2_body.png</key>
-            <key type="filename">../../../../lua/haex/source_images/enemy2_color.png</key>
-            <key type="filename">../../../../lua/haex/source_images/enemy3_alpha.png</key>
-            <key type="filename">../../../../lua/haex/source_images/enemy3_body.png</key>
-            <key type="filename">../../../../lua/haex/source_images/enemy3_color.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_280_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_281_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_282_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_283_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_284_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_285_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_286_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_287_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_288_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_307_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_308_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_309_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_310_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_311_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_312_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_313_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_314_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_315_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_334_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_335_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_336_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_337_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_338_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_339_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_340_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_341_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_361_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_362_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_363_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_364_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_365_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_366_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_390_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_391_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_392_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_393_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_417_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_418_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_419_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tile_masks/tile_420_mask.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_280.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_281.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_282.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_283.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_284.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_285.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_286.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_287.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_288.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_307.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_308.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_309.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_310.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_311.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_312.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_313.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_314.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_315.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_334.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_335.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_336.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_337.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_338.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_339.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_340.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_341.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_361.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_362.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_363.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_364.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_365.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_366.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_390.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_391.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_392.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_393.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_417.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_418.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_419.png</key>
-            <key type="filename">../../../../lua/haex/source_images/tiles/tile_420.png</key>
+            <key type="filename">../../source images/enemy1_alpha.png</key>
+            <key type="filename">../../source images/enemy1_body.png</key>
+            <key type="filename">../../source images/enemy1_color.png</key>
+            <key type="filename">../../source images/enemy2_alpha.png</key>
+            <key type="filename">../../source images/enemy2_body.png</key>
+            <key type="filename">../../source images/enemy2_color.png</key>
+            <key type="filename">../../source images/enemy3_alpha.png</key>
+            <key type="filename">../../source images/enemy3_body.png</key>
+            <key type="filename">../../source images/enemy3_color.png</key>
+            <key type="filename">../../source images/tile_masks/tile_280_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_281_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_282_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_283_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_284_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_285_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_286_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_287_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_288_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_307_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_308_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_309_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_310_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_311_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_312_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_313_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_314_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_315_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_334_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_335_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_336_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_337_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_338_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_339_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_340_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_341_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_361_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_362_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_363_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_364_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_365_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_366_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_390_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_391_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_392_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_393_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_417_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_418_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_419_mask.png</key>
+            <key type="filename">../../source images/tile_masks/tile_420_mask.png</key>
+            <key type="filename">../../source images/tiles/tile_280.png</key>
+            <key type="filename">../../source images/tiles/tile_281.png</key>
+            <key type="filename">../../source images/tiles/tile_282.png</key>
+            <key type="filename">../../source images/tiles/tile_283.png</key>
+            <key type="filename">../../source images/tiles/tile_284.png</key>
+            <key type="filename">../../source images/tiles/tile_285.png</key>
+            <key type="filename">../../source images/tiles/tile_286.png</key>
+            <key type="filename">../../source images/tiles/tile_287.png</key>
+            <key type="filename">../../source images/tiles/tile_288.png</key>
+            <key type="filename">../../source images/tiles/tile_307.png</key>
+            <key type="filename">../../source images/tiles/tile_308.png</key>
+            <key type="filename">../../source images/tiles/tile_309.png</key>
+            <key type="filename">../../source images/tiles/tile_310.png</key>
+            <key type="filename">../../source images/tiles/tile_311.png</key>
+            <key type="filename">../../source images/tiles/tile_312.png</key>
+            <key type="filename">../../source images/tiles/tile_313.png</key>
+            <key type="filename">../../source images/tiles/tile_314.png</key>
+            <key type="filename">../../source images/tiles/tile_315.png</key>
+            <key type="filename">../../source images/tiles/tile_334.png</key>
+            <key type="filename">../../source images/tiles/tile_335.png</key>
+            <key type="filename">../../source images/tiles/tile_336.png</key>
+            <key type="filename">../../source images/tiles/tile_337.png</key>
+            <key type="filename">../../source images/tiles/tile_338.png</key>
+            <key type="filename">../../source images/tiles/tile_339.png</key>
+            <key type="filename">../../source images/tiles/tile_340.png</key>
+            <key type="filename">../../source images/tiles/tile_341.png</key>
+            <key type="filename">../../source images/tiles/tile_361.png</key>
+            <key type="filename">../../source images/tiles/tile_362.png</key>
+            <key type="filename">../../source images/tiles/tile_363.png</key>
+            <key type="filename">../../source images/tiles/tile_364.png</key>
+            <key type="filename">../../source images/tiles/tile_365.png</key>
+            <key type="filename">../../source images/tiles/tile_366.png</key>
+            <key type="filename">../../source images/tiles/tile_390.png</key>
+            <key type="filename">../../source images/tiles/tile_391.png</key>
+            <key type="filename">../../source images/tiles/tile_392.png</key>
+            <key type="filename">../../source images/tiles/tile_393.png</key>
+            <key type="filename">../../source images/tiles/tile_417.png</key>
+            <key type="filename">../../source images/tiles/tile_418.png</key>
+            <key type="filename">../../source images/tiles/tile_419.png</key>
+            <key type="filename">../../source images/tiles/tile_420.png</key>
             <struct type="IndividualSpriteSettings">
                 <key>pivotPoint</key>
                 <point_f>0.5,0.5</point_f>
@@ -384,9 +316,9 @@
                 <key>scale9FromFile</key>
                 <false/>
             </struct>
-            <key type="filename">../../../../lua/haex/source_images/exit_alpha.png</key>
-            <key type="filename">../../../../lua/haex/source_images/exit_body.png</key>
-            <key type="filename">../../../../lua/haex/source_images/exit_color.png</key>
+            <key type="filename">../../source images/exit_alpha.png</key>
+            <key type="filename">../../source images/exit_body.png</key>
+            <key type="filename">../../source images/exit_color.png</key>
             <struct type="IndividualSpriteSettings">
                 <key>pivotPoint</key>
                 <point_f>0.5,0.5</point_f>
@@ -396,21 +328,81 @@
                 <rect>8,8,16,16</rect>
                 <key>scale9Paddings</key>
                 <rect>8,8,16,16</rect>
+                <key>scale9FromFile</key>
+                <false/>
+            </struct>
+            <key type="filename">../../source images/title_arrow.png</key>
+            <struct type="IndividualSpriteSettings">
+                <key>pivotPoint</key>
+                <point_f>0.5,0.5</point_f>
+                <key>scale9Enabled</key>
+                <false/>
+                <key>scale9Borders</key>
+                <rect>18,4,37,9</rect>
+                <key>scale9Paddings</key>
+                <rect>18,4,37,9</rect>
+                <key>scale9FromFile</key>
+                <false/>
+            </struct>
+            <key type="filename">../../source images/title_kyle.png</key>
+            <key type="filename">../../source images/title_kyle_white.png</key>
+            <struct type="IndividualSpriteSettings">
+                <key>pivotPoint</key>
+                <point_f>0.5,0.5</point_f>
+                <key>scale9Enabled</key>
+                <false/>
+                <key>scale9Borders</key>
+                <rect>32,5,64,9</rect>
+                <key>scale9Paddings</key>
+                <rect>32,5,64,9</rect>
+                <key>scale9FromFile</key>
+                <false/>
+            </struct>
+            <key type="filename">../../source images/title_ryan.png</key>
+            <key type="filename">../../source images/title_ryan_white.png</key>
+            <struct type="IndividualSpriteSettings">
+                <key>pivotPoint</key>
+                <point_f>0.5,0.5</point_f>
+                <key>scale9Enabled</key>
+                <false/>
+                <key>scale9Borders</key>
+                <rect>22,5,45,9</rect>
+                <key>scale9Paddings</key>
+                <rect>22,5,45,9</rect>
+                <key>scale9FromFile</key>
+                <false/>
+            </struct>
+            <key type="filename">../../source images/title_tanner.png</key>
+            <key type="filename">../../source images/title_tanner_white.png</key>
+            <struct type="IndividualSpriteSettings">
+                <key>pivotPoint</key>
+                <point_f>0.5,0.5</point_f>
+                <key>scale9Enabled</key>
+                <false/>
+                <key>scale9Borders</key>
+                <rect>37,5,73,9</rect>
+                <key>scale9Paddings</key>
+                <rect>37,5,73,9</rect>
+                <key>scale9FromFile</key>
+                <false/>
+            </struct>
+            <key type="filename">../../source images/title_title.png</key>
+            <struct type="IndividualSpriteSettings">
+                <key>pivotPoint</key>
+                <point_f>0.5,0.5</point_f>
+                <key>scale9Enabled</key>
+                <false/>
+                <key>scale9Borders</key>
+                <rect>18,11,36,21</rect>
+                <key>scale9Paddings</key>
+                <rect>18,11,36,21</rect>
                 <key>scale9FromFile</key>
                 <false/>
             </struct>
         </map>
         <key>fileList</key>
         <array>
-            <filename>../../../../lua/haex/source_images</filename>
-            <filename>../../../../lua/haex/images/title_arrow.png</filename>
-            <filename>../../../../lua/haex/images/title_kyle.png</filename>
-            <filename>../../../../lua/haex/images/title_kyle_white.png</filename>
-            <filename>../../../../lua/haex/images/title_ryan.png</filename>
-            <filename>../../../../lua/haex/images/title_ryan_white.png</filename>
-            <filename>../../../../lua/haex/images/title_tanner.png</filename>
-            <filename>../../../../lua/haex/images/title_tanner_white.png</filename>
-            <filename>../../../../lua/haex/images/title_title.png</filename>
+            <filename>../../source images</filename>
         </array>
         <key>ignoreFileList</key>
         <array/>
