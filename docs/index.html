@@ -26,6 +26,7 @@
 		let aesthetic_promise = fetch('./shaders/aesthetic.glsl').then(r => r.text());
 		let menu_promise = fetch('./shaders/menu.glsl').then(r => r.text());
 		let vignette_promise = fetch('./shaders/vignette.glsl').then(r => r.text());
+		let map_obscuring_promise = fetch('./shaders/map_obscuring.glsl').then(r => r.text());
 
 		function newAudio(src) {
 			let audio = document.createElement('audio');
@@ -149,6 +150,7 @@
 			resources.set_aesthetic_shader(await aesthetic_promise);
 			resources.set_menu_shader(await menu_promise);
 			resources.set_vignette_shader(await vignette_promise);
+			resources.set_map_obscuring_shader(await map_obscuring_promise);
 
 			resources.set_agent_smith_laugh(agent_smith_laugh);
 			resources.set_last_level_drone(last_level_drone);

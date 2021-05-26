@@ -35,6 +35,9 @@ fn main() -> eyre::Result<()> {
         aesthetic_shader_src: std::fs::read_to_string(shaders_folder.join("aesthetic.glsl"))?,
         menu_shader_src: std::fs::read_to_string(shaders_folder.join("menu.glsl"))?,
         vignette_shader_src: std::fs::read_to_string(shaders_folder.join("vignette.glsl"))?,
+        map_obscuring_shader_src: std::fs::read_to_string(
+            shaders_folder.join("map_obscuring.glsl"),
+        )?,
         audio: resources::Audio {
             agent_smith_laugh: new_audio("agent_smith_laugh.ogg")?,
             last_level_drone: new_audio("last_level_drone.ogg")?,

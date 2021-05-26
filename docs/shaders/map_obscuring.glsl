@@ -1,12 +1,12 @@
 #ifdef VERTEX
-vec4 position(mat4 transform_projection, vec4 vertex_position) {
+vec4 pos(mat4 transform_projection, vec4 vertex_position) {
   return transform_projection * vertex_position;
 }
 #endif
 
-#ifdef PIXEL
-extern float elapsed;
-extern vec2 grid_dimensions;
+#ifdef FRAGMENT
+uniform float elapsed;
+uniform vec2 grid_dimensions;
 
 float hash(vec2 p) {
     p = 50.0*fract( p*0.3183099 + vec2(0.71,0.113));
@@ -28,14 +28,14 @@ vec4 effect(vec4 color, Image texture, vec2 tc, vec2 screen_coords) {
   float line_width = 0.05;
 
   // bottom-left
-  vec2 bl = step(vec2(line_width), fract(tc));
+  vec2 bl = step(vec2(line_width), fract(color.xy));
   float pct = bl.x * bl.y;
 
   // top-right
-  vec2 tr = step(vec2(line_width), 1.0 - fract(tc));
+  vec2 tr = step(vec2(line_width), 1.0 - fract(color.xy));
   pct *= tr.x * tr.y;
 
-  vec2 uv = tc * love_ScreenSize.xy + elapsed / 10.0;
+  vec2 uv = tc * uResolution.xy + elapsed / 10.0;
   mat2 m = mat2( 1.6,  1.2, -1.2,  1.6 );
   float f = 0.0;
   f += 0.5000*noise(uv); uv = m*uv;
@@ -48,6 +48,6 @@ vec4 effect(vec4 color, Image texture, vec2 tc, vec2 screen_coords) {
     1.0 - pct * (1.0 - f),
     pow(sin(elapsed / 10.0), 2.0)
   );
-  return color * vec4(vec3(c), 1.0);
+  return vec4(vec3(c), color.a);
 }
 #endif

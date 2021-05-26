@@ -160,6 +160,7 @@ pub struct Resources {
     pub aesthetic_shader_src: String,
     pub menu_shader_src: String,
     pub vignette_shader_src: String,
+    pub map_obscuring_shader_src: String,
     pub audio: Audio,
 }
 
@@ -194,6 +195,7 @@ impl Resources {
                 aesthetic: solstice_2d::Shader::with(&self.aesthetic_shader_src, ctx)?,
                 menu: solstice_2d::Shader::with(&self.menu_shader_src, ctx)?,
                 vignette: solstice_2d::Shader::with(&self.vignette_shader_src, ctx)?,
+                map_obscuring: solstice_2d::Shader::with(&self.map_obscuring_shader_src, ctx)?,
             },
             audio: self.audio,
         })
@@ -204,11 +206,17 @@ pub struct Shaders {
     pub aesthetic: solstice_2d::Shader,
     pub menu: solstice_2d::Shader,
     pub vignette: solstice_2d::Shader,
+    pub map_obscuring: solstice_2d::Shader,
 }
 
 impl Shaders {
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut solstice_2d::Shader> + '_ {
-        std::array::IntoIter::new([&mut self.aesthetic, &mut self.menu])
+        std::array::IntoIter::new([
+            &mut self.aesthetic,
+            &mut self.menu,
+            &mut self.vignette,
+            &mut self.map_obscuring,
+        ])
     }
 }
 
