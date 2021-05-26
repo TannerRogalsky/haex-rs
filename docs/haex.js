@@ -269,6 +269,14 @@ export class ResourcesWrapper {
         wasm.resourceswrapper_set_debug_font_data(this.ptr, ptr0, len0);
     }
     /**
+    * @param {Uint8Array} data
+    */
+    set_pixel_font_data(data) {
+        var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+        var len0 = WASM_VECTOR_LEN;
+        wasm.resourceswrapper_set_pixel_font_data(this.ptr, ptr0, len0);
+    }
+    /**
     * @param {HTMLImageElement} image
     */
     set_sprites(image) {
@@ -303,6 +311,54 @@ export class ResourcesWrapper {
         var ptr0 = passStringToWasm0(src, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         var len0 = WASM_VECTOR_LEN;
         wasm.resourceswrapper_set_menu_shader(this.ptr, ptr0, len0);
+    }
+    /**
+    * @param {string} src
+    */
+    set_vignette_shader(src) {
+        var ptr0 = passStringToWasm0(src, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len0 = WASM_VECTOR_LEN;
+        wasm.resourceswrapper_set_vignette_shader(this.ptr, ptr0, len0);
+    }
+    /**
+    * @param {string} src
+    */
+    set_map_obscuring_shader(src) {
+        var ptr0 = passStringToWasm0(src, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len0 = WASM_VECTOR_LEN;
+        wasm.resourceswrapper_set_map_obscuring_shader(this.ptr, ptr0, len0);
+    }
+    /**
+    * @param {string} src
+    */
+    set_grayscale_shader(src) {
+        var ptr0 = passStringToWasm0(src, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len0 = WASM_VECTOR_LEN;
+        wasm.resourceswrapper_set_grayscale_shader(this.ptr, ptr0, len0);
+    }
+    /**
+    * @param {HTMLMediaElement} source
+    */
+    set_agent_smith_laugh(source) {
+        wasm.resourceswrapper_set_agent_smith_laugh(this.ptr, addHeapObject(source));
+    }
+    /**
+    * @param {HTMLMediaElement} source
+    */
+    set_last_level_drone(source) {
+        wasm.resourceswrapper_set_last_level_drone(this.ptr, addHeapObject(source));
+    }
+    /**
+    * @param {HTMLMediaElement} source
+    */
+    set_level_finish(source) {
+        wasm.resourceswrapper_set_level_finish(this.ptr, addHeapObject(source));
+    }
+    /**
+    * @param {HTMLMediaElement} source
+    */
+    set_quote(source) {
+        wasm.resourceswrapper_set_quote(this.ptr, addHeapObject(source));
     }
     /**
     * @param {HTMLMediaElement} source
@@ -472,6 +528,10 @@ async function init(input) {
         var ret = new lAudioContext();
         return addHeapObject(ret);
     }, arguments) };
+    imports.wbg.__wbg_close_d4d3c966433dc452 = function() { return handleError(function (arg0) {
+        var ret = getObject(arg0).close();
+        return addHeapObject(ret);
+    }, arguments) };
     imports.wbg.__wbg_createMediaElementSource_6916ce270923880d = function() { return handleError(function (arg0, arg1) {
         var ret = getObject(arg0).createMediaElementSource(getObject(arg1));
         return addHeapObject(ret);
@@ -515,6 +575,12 @@ async function init(input) {
         var ret = getObject(arg0).height;
         return ret;
     };
+    imports.wbg.__wbg_setcurrentTime_eba88c09fe6bc618 = function(arg0, arg1) {
+        getObject(arg0).currentTime = arg1;
+    };
+    imports.wbg.__wbg_pause_936acd7b795c17d2 = function() { return handleError(function (arg0) {
+        getObject(arg0).pause();
+    }, arguments) };
     imports.wbg.__wbg_play_e7104791b43b7b19 = function() { return handleError(function (arg0) {
         var ret = getObject(arg0).play();
         return addHeapObject(ret);

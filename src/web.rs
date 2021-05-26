@@ -48,6 +48,7 @@ pub struct ResourcesWrapper {
     menu_shader_src: Option<String>,
     vignette_shader_src: Option<String>,
     map_obscuring_shader_src: Option<String>,
+    grayscale_shader_src: Option<String>,
     music: Option<web_sys::HtmlMediaElement>,
     agent_smith_laugh: Option<web_sys::HtmlMediaElement>,
     last_level_drone: Option<web_sys::HtmlMediaElement>,
@@ -69,6 +70,7 @@ impl ResourcesWrapper {
             menu_shader_src: None,
             vignette_shader_src: None,
             map_obscuring_shader_src: None,
+            grayscale_shader_src: None,
             music: None,
             agent_smith_laugh: None,
             last_level_drone: None,
@@ -113,6 +115,10 @@ impl ResourcesWrapper {
 
     pub fn set_map_obscuring_shader(&mut self, src: String) {
         self.map_obscuring_shader_src = Some(src);
+    }
+
+    pub fn set_grayscale_shader(&mut self, src: String) {
+        self.grayscale_shader_src = Some(src);
     }
 
     pub fn set_agent_smith_laugh(&mut self, source: web_sys::HtmlMediaElement) {
@@ -207,6 +213,9 @@ impl Wrapper {
                 .ok_or(JsValue::from_str("missing vignette shader source"))?,
             map_obscuring_shader_src: resources
                 .map_obscuring_shader_src
+                .ok_or(JsValue::from_str("missing map obscuring shader source"))?,
+            grayscale_shader_src: resources
+                .grayscale_shader_src
                 .ok_or(JsValue::from_str("missing map obscuring shader source"))?,
             audio: Audio {
                 agent_smith_laugh: new_audio(resources.agent_smith_laugh)?,

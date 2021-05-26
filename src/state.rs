@@ -392,8 +392,9 @@ impl Map {
         let x = cw / (gw as f32 * tw);
         let y = ch / (gh as f32 * th);
         ctx.g.set_camera(solstice_2d::Transform2D::scale(x, y));
-        // self.batch.unmap(ctx.g.ctx_mut());
+        ctx.g.set_shader(Some(ctx.resources.shaders.grayscale.clone()));
         ctx.g.image(self.batch.geometry(), &ctx.resources.sprites);
+        ctx.g.set_shader(None);
     }
 }
 
@@ -527,7 +528,7 @@ mod camera {
             let [tw, th] = map.tile_size;
             let [tw, th] = [tw * scale, th * scale];
             let [pw, ph] = [gw as f32 * tw, gh as f32 * th];
-            let camera_should_follow = pw > sw || ph > sh;
+            let camera_should_follow = pw >= sw || ph >= sh;
 
             if camera_should_follow {
                 let (player_x, player_y) = player.position();

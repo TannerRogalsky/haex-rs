@@ -161,6 +161,7 @@ pub struct Resources {
     pub menu_shader_src: String,
     pub vignette_shader_src: String,
     pub map_obscuring_shader_src: String,
+    pub grayscale_shader_src: String,
     pub audio: Audio,
 }
 
@@ -196,6 +197,7 @@ impl Resources {
                 menu: solstice_2d::Shader::with(&self.menu_shader_src, ctx)?,
                 vignette: solstice_2d::Shader::with(&self.vignette_shader_src, ctx)?,
                 map_obscuring: solstice_2d::Shader::with(&self.map_obscuring_shader_src, ctx)?,
+                grayscale: solstice_2d::Shader::with(&self.grayscale_shader_src, ctx)?,
             },
             audio: self.audio,
         })
@@ -207,6 +209,7 @@ pub struct Shaders {
     pub menu: solstice_2d::Shader,
     pub vignette: solstice_2d::Shader,
     pub map_obscuring: solstice_2d::Shader,
+    pub grayscale: solstice_2d::Shader,
 }
 
 impl Shaders {
@@ -216,6 +219,7 @@ impl Shaders {
             &mut self.menu,
             &mut self.vignette,
             &mut self.map_obscuring,
+            &mut self.grayscale,
         ])
     }
 }
