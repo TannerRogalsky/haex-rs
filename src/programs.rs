@@ -1,9 +1,15 @@
 use crate::{
     map::Direction,
     player::*,
-    state::{Map, State, StateContext},
+    state::{Map, State as GameState, StateContext},
     CronContext,
 };
+
+pub struct State<'a, 'b, 'c, 'd> {
+    pub ctx: &'a mut StateContext<'b, 'c, 'd>,
+    pub player: &'a Player,
+    pub map: &'a Map,
+}
 
 pub struct StateMut<'a, 'b, 'c, 'd> {
     pub ctx: &'a mut StateContext<'b, 'c, 'd>,
@@ -24,7 +30,7 @@ impl NopSlide {
         let id = state.ctx.cron.every(step, move |ctx: &mut CronContext| {
             let tiles = &ctx.shared.resources.sprites_metadata_raw;
             match &mut ctx.game_state {
-                Some(State::Main(main)) => {
+                Some(GameState::Main(main)) => {
                     let mut changed = false;
                     let dirs = std::array::IntoIter::new(Direction::cardinals());
                     for direction in dirs {

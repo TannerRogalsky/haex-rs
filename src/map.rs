@@ -41,7 +41,7 @@ impl Direction {
         }
     }
 
-    pub fn cardinals() -> [Direction; 4] {
+    pub const fn cardinals() -> [Direction; 4] {
         [Direction::N, Direction::E, Direction::S, Direction::W]
     }
 }

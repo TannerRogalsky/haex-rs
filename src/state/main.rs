@@ -13,6 +13,7 @@ pub struct Main {
     active_program: Option<crate::cron::ID>,
     progression: crate::MapProgression,
     ui_state: UIState,
+    enemies: Vec<crate::enemy::Enemy>,
 }
 
 impl Main {
@@ -39,12 +40,18 @@ impl Main {
             crate::player::Player::new(x, y)
         };
 
+        let enemies = vec![{
+            let (x, y) = map.inner.coord_to_mid_pixel((0, 0));
+            crate::enemy::Enemy::new_basic(x, y)
+        }];
+
         Ok(Self {
             map,
             player,
             active_program: None,
             progression: settings,
             ui_state: UIState::Closed,
+            enemies,
         })
     }
 
@@ -66,6 +73,15 @@ impl Main {
 
     pub fn update(mut self, dt: std::time::Duration, mut ctx: StateContext) -> State {
         self.ui_state.update(dt);
+
+        for enemy in self.enemies.iter_mut() {
+            let mut ctx = crate::programs::StateMut {
+                ctx: &mut ctx,
+                player: &mut self.player,
+                map: &mut self.map.inner,
+            };
+            enemy.update(dt, &mut ctx);
+        }
 
         if let Some(active_program) = self.active_program {
             if !ctx.cron.contains(active_program) {
@@ -193,6 +209,16 @@ impl Main {
             use super::DrawableMap;
             self.map.render(&self.player, &mut ctx);
             self.map.render_player(&self.player, &mut ctx);
+
+            for enemy in self.enemies.iter_mut() {
+                let mut ctx = crate::programs::State {
+                    ctx: &mut ctx,
+                    player: &self.player,
+                    map: &self.map.inner,
+                };
+                enemy.render(&mut ctx);
+            }
+
             self.map.render_overlay(&self.player, 2, &mut ctx);
 
             ctx.g.set_camera(solstice_2d::Transform2D::default());

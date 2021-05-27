@@ -1,5 +1,6 @@
 pub mod audio;
 mod cron;
+mod enemy;
 mod map;
 mod player;
 mod programs;
@@ -345,7 +346,7 @@ mod quads {
     }
 
     impl UVRect {
-        pub fn at_zero(mut self) -> UVRect {
+        pub fn at_zero(mut self) -> Self {
             self.positions.x = 0.;
             self.positions.y = 0.;
             self

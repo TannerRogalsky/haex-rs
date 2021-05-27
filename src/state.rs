@@ -89,15 +89,11 @@ impl Graph {
 }
 
 pub trait DrawableMap {
-    fn render<'a>(&'a self, player: &'a crate::player::Player, ctx: &mut StateContext<'_, '_, 'a>);
-    fn render_player<'a>(
-        &'a self,
-        player: &'a crate::player::Player,
-        ctx: &mut StateContext<'_, '_, 'a>,
-    );
+    fn render<'a>(&'a self, player: &crate::player::Player, ctx: &mut StateContext<'_, '_, 'a>);
+    fn render_player(&self, player: &crate::player::Player, ctx: &mut StateContext<'_, '_, '_>);
     fn render_overlay<'a>(
         &'a self,
-        player: &'a crate::player::Player,
+        player: &crate::player::Player,
         view_distance: i32,
         ctx: &mut StateContext<'_, '_, 'a>,
     );
@@ -148,10 +144,10 @@ impl NavigableMap {
     }
 }
 
-fn overlay<'a>(
-    ctx: &mut StateContext<'_, '_, 'a>,
-    map: &'a Map,
-    player: &'a crate::player::Player,
+fn overlay(
+    ctx: &mut StateContext<'_, '_, '_>,
+    map: &Map,
+    player: &crate::player::Player,
     view_distance: i32,
 ) {
     use solstice_2d::Draw;
@@ -227,11 +223,7 @@ fn overlay<'a>(
 }
 
 impl DrawableMap for NavigableMap {
-    fn render<'a>(
-        &'a self,
-        _player: &'a crate::player::Player,
-        ctx: &mut StateContext<'_, '_, 'a>,
-    ) {
+    fn render<'a>(&'a self, _player: &crate::player::Player, ctx: &mut StateContext<'_, '_, 'a>) {
         self.inner.draw(ctx);
 
         if cfg!(debug_assertions) {
@@ -254,7 +246,7 @@ impl DrawableMap for NavigableMap {
         }
     }
 
-    fn render_player<'a>(&'a self, player: &'a Player, ctx: &mut StateContext<'_, '_, 'a>) {
+    fn render_player(&self, player: &Player, ctx: &mut StateContext<'_, '_, '_>) {
         use solstice_2d::Draw;
         let (x, y) = player.position();
         let rot = solstice_2d::Rad(ctx.time.as_secs_f32());
@@ -274,7 +266,7 @@ impl DrawableMap for NavigableMap {
 
     fn render_overlay<'a>(
         &'a self,
-        player: &'a Player,
+        player: &Player,
         view_distance: i32,
         ctx: &mut StateContext<'_, '_, 'a>,
     ) {
@@ -283,15 +275,11 @@ impl DrawableMap for NavigableMap {
 }
 
 impl DrawableMap for Map {
-    fn render<'a>(
-        &'a self,
-        _player: &'a crate::player::Player,
-        ctx: &mut StateContext<'_, '_, 'a>,
-    ) {
+    fn render<'a>(&'a self, _player: &crate::player::Player, ctx: &mut StateContext<'_, '_, 'a>) {
         self.draw(ctx);
     }
 
-    fn render_player<'a>(&'a self, player: &'a Player, ctx: &mut StateContext<'_, '_, 'a>) {
+    fn render_player(&self, player: &Player, ctx: &mut StateContext<'_, '_, '_>) {
         use solstice_2d::Draw;
         let (x, y) = player.position();
         let rot = solstice_2d::Rad(ctx.time.as_secs_f32());
@@ -311,7 +299,7 @@ impl DrawableMap for Map {
 
     fn render_overlay<'a>(
         &'a self,
-        player: &'a Player,
+        player: &Player,
         view_distance: i32,
         ctx: &mut StateContext<'_, '_, 'a>,
     ) {
@@ -392,7 +380,8 @@ impl Map {
         let x = cw / (gw as f32 * tw);
         let y = ch / (gh as f32 * th);
         ctx.g.set_camera(solstice_2d::Transform2D::scale(x, y));
-        ctx.g.set_shader(Some(ctx.resources.shaders.grayscale.clone()));
+        ctx.g
+            .set_shader(Some(ctx.resources.shaders.grayscale.clone()));
         ctx.g.image(self.batch.geometry(), &ctx.resources.sprites);
         ctx.g.set_shader(None);
     }
