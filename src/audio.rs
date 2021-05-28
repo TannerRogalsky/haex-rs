@@ -146,14 +146,15 @@ mod native {
     }
 
     enum Command {
-        PlayNew(Sink, StreamingAudioSource),
-        Play(Sink),
-        Pause(Sink),
-        Stop(Sink),
+        PlayNew(usize, StreamingAudioSource),
+        Play(usize),
+        Pause(usize),
+        Stop(usize),
         SetGlobalVolume(f32),
     }
 
-    pub type Sink = usize;
+    #[derive(Clone, Eq, PartialEq)]
+    pub struct Sink(usize);
 
     impl AudioContext {
         pub fn new() -> Self {
@@ -181,11 +182,13 @@ mod native {
                             sinks.get(&id).map(rodio::Sink::pause);
                         }
                         Command::Play(id) => {
-                            if let Some(sink) = sinks.get(&id) {
+                            if let Some(sink) = sinks.get_mut(&id) {
                                 if sink.empty() {
                                     if let Some(data) = sources.get(&id) {
                                         let cursor = std::io::Cursor::new(data.clone());
                                         let source = rodio::Decoder::new(cursor)?;
+                                        *sink = rodio::Sink::try_new(&stream_handle)?;
+                                        sink.set_volume(volume);
                                         sink.append(source);
                                     }
                                 }
@@ -237,19 +240,19 @@ mod native {
             let order = std::sync::atomic::Ordering::SeqCst;
             let id = self.sink_id.fetch_add(1, order);
             self.sender.send(Command::PlayNew(id, source))?;
-            Ok(id)
+            Ok(Sink(id))
         }
 
         pub fn pause(&self, sink: &Sink) {
-            let _r = self.sender.send(Command::Pause(*sink));
+            let _r = self.sender.send(Command::Pause(sink.0));
         }
 
         pub fn play(&self, sink: &Sink) {
-            let _r = self.sender.send(Command::Play(*sink));
+            let _r = self.sender.send(Command::Play(sink.0));
         }
 
         pub fn stop(&self, sink: &Sink) {
-            let _r = self.sender.send(Command::Stop(*sink));
+            let _r = self.sender.send(Command::Stop(sink.0));
         }
 
         // pub fn play_looped(&mut self, source: StreamingAudioSource) -> Result<Sink, PlayError> {

@@ -463,7 +463,11 @@ impl State {
                 main.handle_key_event(ctx, state, key_code);
             }
             State::MainToMain(_) => {}
-            State::BadEnd(_) => {}
+            State::BadEnd(inner) => {
+                if let Some(new_state) = inner.handle_key_event(ctx, state, key_code) {
+                    *self = new_state;
+                }
+            }
             State::MainToBadEnd(_) => {}
         }
     }
@@ -506,18 +510,37 @@ mod camera {
             self.transform = solstice_2d::Transform3D::translation(x, y, z) * rot;
         }
 
+        pub fn should_follow(&self, map: &crate::state::Map, scale: f32) -> bool {
+            let [sw, sh] = self.screen_dimension;
+            let [gw, gh] = map.grid.grid_size();
+            let [tw, th] = map.tile_size;
+            let [tw, th] = [tw * scale, th * scale];
+            let [pw, ph] = [gw as f32 * tw, gh as f32 * th];
+            pw >= sw || ph >= sh
+        }
+
         pub fn for_map_with_scale(
             &mut self,
             map: &crate::state::Map,
             player: &crate::player::Player,
             scale: f32,
         ) {
+            let camera_should_follow = self.should_follow(map, scale);
+            self.for_map_with_scale_and_follow(map, player, scale, camera_should_follow)
+        }
+
+        pub fn for_map_with_scale_and_follow(
+            &mut self,
+            map: &crate::state::Map,
+            player: &crate::player::Player,
+            scale: f32,
+            camera_should_follow: bool,
+        ) {
             let [sw, sh] = self.screen_dimension;
             let [gw, gh] = map.grid.grid_size();
             let [tw, th] = map.tile_size;
             let [tw, th] = [tw * scale, th * scale];
             let [pw, ph] = [gw as f32 * tw, gh as f32 * th];
-            let camera_should_follow = pw >= sw || ph >= sh;
 
             if camera_should_follow {
                 let (player_x, player_y) = player.position();

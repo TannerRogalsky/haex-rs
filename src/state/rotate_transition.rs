@@ -2,22 +2,21 @@ use super::{bad_end::BadEnd, main::Main, State, StateContext};
 use crate::{player::Player, state::Map};
 use solstice_2d::{Color, Draw};
 
-fn render<'a>(
-    mut ctx: StateContext<'a, '_, 'a>,
-    ratio: f32,
-    states: [(&'a mut Map, &'a Player, f32); 2],
-) {
+struct RenderState<'a> {
+    map: &'a mut Map,
+    player: &'a Player,
+    aesthetic: crate::AestheticShader,
+    camera: super::Camera,
+}
+
+fn render<'a>(mut ctx: StateContext<'a, '_, 'a>, ratio: f32, states: [RenderState<'a>; 2]) {
     let viewport = ctx.g.gfx().viewport().clone();
 
-    let (w, h) = ctx.aesthetic_canvas.dimensions();
-    let mut from_camera = super::Camera::new(w, h);
-    from_camera.for_map_with_scale(&states[0].0, &states[0].1, states[0].2);
-    let mut to_camera = super::Camera::new(w, h);
-    to_camera.for_map_with_scale(&states[1].0, &states[1].1, states[1].2);
-
-    let camera = from_camera
+    let aesthetic = states[0].aesthetic.lerp(&states[1].aesthetic, ratio);
+    let camera = states[0]
+        .camera
         .transform
-        .lerp_slerp(&to_camera.transform, ratio);
+        .lerp_slerp(&states[1].camera.transform, ratio);
 
     const BLACK: Color = Color::new(0., 0., 0., 1.);
 
@@ -49,7 +48,7 @@ fn render<'a>(
         g.set_canvas(None);
     }
 
-    for (index, (map, player, _)) in std::array::IntoIter::new(states).enumerate() {
+    for (index, RenderState { map, player, .. }) in std::array::IntoIter::new(states).enumerate() {
         ctx.g.set_canvas(Some(ctx.canvas.clone()));
         ctx.g.clear(BLACK);
 
@@ -78,9 +77,7 @@ fn render<'a>(
         let g = &mut ctx.g;
         g.set_camera(solstice_2d::Transform3D::default());
         g.set_canvas(None);
-        g.set_shader(Some(
-            crate::AestheticShader::default().as_shader(ctx.resources),
-        ));
+        g.set_shader(Some(aesthetic.as_shader(ctx.resources)));
         let d = viewport.width().min(viewport.height()) as f32;
         let x = viewport.width() as f32 / 2. - d / 2.;
         g.image(
@@ -115,8 +112,23 @@ impl RotateTransition<Main, Main> {
 
     pub fn render(&mut self, ctx: StateContext) {
         let ratio = self.elapsed.as_secs_f32() / self.time.as_secs_f32();
-        let from = (&mut self.from.map.inner, &self.from.player, 1.);
-        let to = (&mut self.to.map.inner, &self.to.player, 1.);
+        let (w, h) = ctx.aesthetic_canvas.dimensions();
+        let mut from_camera = super::Camera::new(w, h);
+        from_camera.for_map_with_scale(&self.from.map.inner, &self.from.player, 1.);
+        let from = RenderState {
+            map: &mut self.from.map.inner,
+            player: &self.from.player,
+            aesthetic: self.from.progression.settings.aesthetic,
+            camera: from_camera,
+        };
+        let mut to_camera = super::Camera::new(w, h);
+        to_camera.for_map_with_scale(&self.to.map.inner, &self.to.player, 1.);
+        let to = RenderState {
+            map: &mut self.to.map.inner,
+            player: &self.to.player,
+            aesthetic: self.to.progression.settings.aesthetic,
+            camera: to_camera,
+        };
         render(ctx, ratio, [from, to]);
     }
 }
@@ -133,8 +145,28 @@ impl RotateTransition<Main, BadEnd> {
 
     pub fn render(&mut self, ctx: StateContext) {
         let ratio = self.elapsed.as_secs_f32() / self.time.as_secs_f32();
-        let from = (&mut self.from.map.inner, &self.from.player, 1.);
-        let to = (&mut self.to.map, &self.to.player, BadEnd::SCALE);
+        let (w, h) = ctx.aesthetic_canvas.dimensions();
+        let mut from_camera = super::Camera::new(w, h);
+        from_camera.for_map_with_scale(&self.from.map.inner, &self.from.player, 1.);
+        let from = RenderState {
+            map: &mut self.from.map.inner,
+            player: &self.from.player,
+            aesthetic: self.from.progression.settings.aesthetic,
+            camera: from_camera,
+        };
+        let mut to_camera = super::Camera::new(w, h);
+        to_camera.for_map_with_scale_and_follow(
+            &self.to.map,
+            &self.to.player,
+            BadEnd::SCALE,
+            false,
+        );
+        let to = RenderState {
+            map: &mut self.to.map,
+            player: &self.to.player,
+            aesthetic: BadEnd::AESTHETIC,
+            camera: to_camera,
+        };
         render(ctx, ratio, [from, to]);
     }
 }

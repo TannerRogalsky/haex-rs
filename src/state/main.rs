@@ -10,8 +10,8 @@ use ui::UIState;
 pub struct Main {
     pub map: NavigableMap,
     pub player: crate::player::Player,
+    pub progression: crate::MapProgression,
     active_program: Option<crate::cron::ID>,
-    progression: crate::MapProgression,
     ui_state: UIState,
     enemies: Vec<crate::enemy::Enemy>,
 }
@@ -176,17 +176,7 @@ impl Main {
         }
 
         self.ui_state.set_open(ctx.input_state.ctrl);
-        // if cfg!(debug_assertions) {
-        //     if ctx.input_state.ctrl && self.active_program.is_none() {
-        //         let state = crate::programs::StateMut {
-        //             ctx: &mut ctx,
-        //             player: &mut self.player,
-        //             map: &mut self.map.inner,
-        //         };
-        //         let r = crate::programs::NopSlide::new(state);
-        //         self.active_program = Some(r.callback);
-        //     }
-        // }
+
         self.map.inner.batch.unmap(ctx.g.ctx_mut());
 
         State::Main(self)
@@ -254,7 +244,9 @@ impl Main {
 
         g.set_camera(solstice_2d::Transform2D::default());
 
-        self.ui_state.render(g, ctx.resources, &self.player);
+        if cfg!(debug_assertions) {
+            self.ui_state.render(g, ctx.resources, &self.player);
+        }
 
         g.set_canvas(None);
         g.set_shader(Some(

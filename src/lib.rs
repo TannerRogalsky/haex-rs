@@ -33,6 +33,12 @@ pub struct InputState {
     mouse_position: (f32, f32),
 }
 
+impl InputState {
+    pub fn key_states(&self) -> impl Iterator<Item = bool> {
+        std::array::IntoIter::new([self.ctrl, self.space, self.w, self.a, self.s, self.d])
+    }
+}
+
 #[derive(Clone)]
 pub enum ProgressionType {
     Standard(Box<MapProgression>),
@@ -146,7 +152,11 @@ impl Game {
                 width: 4,
                 height: 4,
                 programs: map::ProgramGenSettings { nop_slide_count: 0 },
-                aesthetic: Default::default(),
+                aesthetic: crate::AestheticShader {
+                    random_shift_scale: 0.001,
+                    radial_scale: 1.0,
+                    ..Default::default()
+                },
             },
             exit: Some(ProgressionType::Standard(Box::new(MapProgression {
                 settings: map::MapGenSettings {
@@ -156,17 +166,21 @@ impl Game {
                     aesthetic: AestheticShader {
                         block_threshold: 0.093,
                         line_threshold: 0.33,
+                        random_shift_scale: 0.001,
+                        radial_scale: 1.0,
                         ..Default::default()
                     },
                 },
                 exit: Some(ProgressionType::Standard(Box::new(MapProgression {
                     settings: map::MapGenSettings {
-                        width: 16,
-                        height: 16,
+                        width: 12,
+                        height: 12,
                         programs: map::ProgramGenSettings { nop_slide_count: 0 },
                         aesthetic: AestheticShader {
                             block_threshold: 0.11,
                             line_threshold: 0.39,
+                            random_shift_scale: 0.001,
+                            radial_scale: 1.0,
                             ..Default::default()
                         },
                     },
@@ -174,11 +188,13 @@ impl Game {
                 }))),
             }))),
         };
+
         // let maps = MapProgression {
         //     settings: map::MapGenSettings {
-        //         width: 5,
-        //         height: 5,
+        //         width: 4,
+        //         height: 4,
         //         programs: map::ProgramGenSettings { nop_slide_count: 0 },
+        //         aesthetic: crate::AestheticShader::default(),
         //     },
         //     exit: Some(ProgressionType::BadEnding),
         // };
@@ -287,6 +303,7 @@ pub struct AestheticShader {
     pub random_shift_scale: f32,
     pub radial_scale: f32,
     pub radial_breathing_scale: f32,
+    pub screen_transition_ratio: f32,
 }
 
 impl AestheticShader {
@@ -304,6 +321,11 @@ impl AestheticShader {
                 other.radial_breathing_scale,
                 t,
             ),
+            screen_transition_ratio: lerp(
+                self.screen_transition_ratio,
+                other.screen_transition_ratio,
+                t,
+            ),
         }
     }
 }
@@ -316,6 +338,7 @@ impl Default for AestheticShader {
             random_shift_scale: 0.002,
             radial_scale: 0.1,
             radial_breathing_scale: 0.01,
+            screen_transition_ratio: 0.0,
         }
     }
 }
@@ -328,6 +351,7 @@ impl AestheticShader {
         shader.send_uniform("randomShiftScale", self.random_shift_scale);
         shader.send_uniform("radialScale", self.radial_scale);
         shader.send_uniform("radialBreathingScale", self.radial_breathing_scale);
+        shader.send_uniform("screenTransitionRatio", self.screen_transition_ratio);
         let unit = 1;
         shader.bind_texture_at_location(&ctx.noise, (unit as usize).into());
         shader.send_uniform("tex1", unit);
@@ -346,6 +370,12 @@ mod quads {
     }
 
     impl UVRect {
+        pub fn center_on(mut self, x: f32, y: f32) -> Self {
+            self.positions.x = x - self.positions.width / 2.;
+            self.positions.y = y - self.positions.height / 2.;
+            self
+        }
+
         pub fn at_zero(mut self) -> Self {
             self.positions.x = 0.;
             self.positions.y = 0.;

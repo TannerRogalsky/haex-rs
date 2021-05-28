@@ -4,11 +4,52 @@ use enumflags2::BitFlags;
 use solstice_2d::solstice::quad_batch::QuadBatch;
 use solstice_2d::{Color, Draw};
 
+#[derive(Copy, Clone)]
+struct Timer {
+    t: std::time::Duration,
+    elapsed: std::time::Duration,
+}
+
+impl Timer {
+    fn new(t: std::time::Duration) -> Self {
+        Self {
+            t,
+            elapsed: Default::default(),
+        }
+    }
+
+    fn update(&mut self, dt: std::time::Duration) -> bool {
+        self.elapsed += dt;
+        if self.elapsed >= self.t {
+            self.elapsed -= self.t;
+            true
+        } else {
+            false
+        }
+    }
+
+    fn ratio(&self) -> f32 {
+        self.elapsed.as_secs_f32() / self.t.as_secs_f32()
+    }
+}
+
 enum EndState {
     Start,
     FadeToSequence(u8),
-    Speech,
+    Speech(std::time::Duration),
+    Die(Timer),
+    Over(Timer),
+    Black,
 }
+
+const WIDTH: usize = 16;
+const HEIGHT: usize = 16;
+const ENEMY_POS: [(usize, usize); 4] = [
+    (3, 3),
+    (3, HEIGHT - 2 - 2),
+    (WIDTH - 2 - 2, HEIGHT - 2 - 2),
+    (WIDTH - 2 - 2, 3),
+];
 
 pub struct BadEnd {
     pub map: super::Map,
@@ -20,21 +61,27 @@ pub struct BadEnd {
 
 impl BadEnd {
     pub const SCALE: f32 = 0.25;
+    pub const AESTHETIC: crate::AestheticShader = crate::AestheticShader {
+        block_threshold: 0.073,
+        line_threshold: 0.23,
+        random_shift_scale: 0.001,
+        radial_scale: 1.0,
+        radial_breathing_scale: 0.01,
+        screen_transition_ratio: 0.0,
+    };
 
     pub fn new(mut ctx: StateContext) -> Result<Self, solstice_2d::GraphicsError> {
-        let width = 16;
-        let height = 16;
-        let grid = map_gen(width, height);
+        let grid = map_gen(WIDTH, HEIGHT);
 
         let tiles = crate::map::create_batch(64., 64., &grid, &ctx.resources.sprites_metadata_raw);
-        let mut batch = QuadBatch::new(ctx.g.ctx_mut(), width * height)?;
+        let mut batch = QuadBatch::new(ctx.g.ctx_mut(), WIDTH * HEIGHT)?;
         for tile in tiles {
             batch.push(tile);
         }
 
         let [x, y] = [
-            (width as f32 / 2. - 0.5) * 64.,
-            ((height - 1) as f32 + 0.5) * 64.,
+            (WIDTH as f32 / 2. - 0.5) * 64.,
+            ((HEIGHT - 1) as f32 + 0.5) * 64.,
         ];
         let player = crate::player::Player::new(x, y);
         let map = super::Map {
@@ -42,19 +89,19 @@ impl BadEnd {
             batch,
             tile_size: [64., 64.],
             seen: Grid {
-                data: vec![false; width * height].into_boxed_slice(),
-                width,
-                height,
+                data: vec![false; WIDTH * HEIGHT].into_boxed_slice(),
+                width: WIDTH,
+                height: HEIGHT,
             },
         };
 
         let boss_show = Grid {
-            data: vec![false; width * height].into_boxed_slice(),
-            width,
-            height,
+            data: vec![false; WIDTH * HEIGHT].into_boxed_slice(),
+            width: WIDTH,
+            height: HEIGHT,
         };
 
-        let [w, h] = [width as f32 * 64., height as f32 * 64. * 1.25];
+        let [w, h] = [WIDTH as f32 * 64., HEIGHT as f32 * 64. * 1.25];
         let lh = 16. * 4.;
         let [die_x, die_y] = [w * 0.5, h * 0.7 + lh * 2.];
         fn hacker_text(t: f32) -> String {
@@ -90,6 +137,28 @@ impl BadEnd {
             boss_show,
             shodan_text,
         })
+    }
+
+    pub fn handle_key_event(
+        &mut self,
+        _ctx: StateContext,
+        state: crate::ElementState,
+        key_code: crate::VirtualKeyCode,
+    ) -> Option<State> {
+        if let EndState::Black = self.state {
+            if state == crate::ElementState::Released {
+                match key_code {
+                    crate::VirtualKeyCode::W
+                    | crate::VirtualKeyCode::A
+                    | crate::VirtualKeyCode::S
+                    | crate::VirtualKeyCode::D => {
+                        return Some(State::default());
+                    }
+                    _ => {}
+                }
+            }
+        }
+        None
     }
 
     pub fn update(mut self, dt: std::time::Duration, mut ctx: StateContext) -> State {
@@ -140,21 +209,47 @@ impl BadEnd {
                 }
             }
             EndState::FadeToSequence(frame) => {
+                // let ratio = *frame as f32 / u8::MAX as f32;
+                // ctx.audio_ctx.set_global_volume(1. - ratio);
+
                 let index = feistel(*frame);
                 self.boss_show.data[index as usize] = true;
                 if *frame == 255 {
-                    self.state = EndState::Speech;
+                    let drone = ctx.sinks().last_level_drone.clone();
+                    let speech = ctx.sinks().quote.clone();
+                    // ctx.audio_ctx.set_global_volume(1.);
+                    ctx.audio_ctx.stop(&drone);
+                    ctx.audio_ctx.play(&speech);
+                    self.state = EndState::Speech(Default::default());
                 } else {
                     *frame = frame.saturating_add(1);
                 }
             }
-            EndState::Speech => {
+            EndState::Speech(t) => {
                 self.shodan_text.update(dt);
+                *t += dt;
+                if *t >= (self.shodan_text.time + std::time::Duration::from_secs(1)) {
+                    self.state = EndState::Die(Timer::new(std::time::Duration::from_secs_f32(3.)))
+                }
             }
+            EndState::Die(timer) => {
+                if timer.update(dt) {
+                    self.state = EndState::Over(Timer::new(std::time::Duration::from_secs_f32(1.)))
+                }
+            }
+            EndState::Over(timer) => {
+                if timer.update(dt) {
+                    let music = ctx.sinks().music.clone();
+                    ctx.audio_ctx.play(&music);
+                    self.state = EndState::Black;
+                }
+            }
+            EndState::Black => {}
         }
 
         if cfg!(debug_assertions) {
             if ctx.input_state.ctrl {
+                ctx.audio_ctx.set_global_volume(1.);
                 for v in self.map.seen.data.iter_mut() {
                     *v = true;
                 }
@@ -168,7 +263,7 @@ impl BadEnd {
         let viewport = ctx.g.ctx_mut().viewport().clone();
         let (w, h) = ctx.aesthetic_canvas.dimensions();
         let mut camera = super::Camera::new(w, h);
-        camera.for_map_with_scale(&self.map, &self.player, Self::SCALE);
+        camera.for_map_with_scale_and_follow(&self.map, &self.player, Self::SCALE, false);
 
         const BLACK: Color = Color::new(0., 0., 0., 1.);
 
@@ -188,17 +283,36 @@ impl BadEnd {
         };
 
         use super::DrawableMap;
-        match self.state {
+        let aesthetic = match self.state {
             EndState::Start => {
                 self.map.render(&self.player, &mut ctx);
                 self.map.render_player(&self.player, &mut ctx);
+
+                for coord in std::array::IntoIter::new(ENEMY_POS) {
+                    let (x, y) = self.map.coord_to_mid_pixel(coord);
+                    let y = y + (ctx.time.as_secs_f32() + x * y).sin() * 5.;
+                    let scale = 1. / Self::SCALE;
+                    let tx = solstice_2d::Transform2D::translation(x, y)
+                        * solstice_2d::Transform2D::scale(scale, scale);
+                    ctx.g.image_with_transform(
+                        ctx.resources.sprites_metadata.enemy2_body.center_on(0., 0.),
+                        &ctx.resources.sprites,
+                        tx,
+                    );
+                }
+
                 ctx.g
                     .set_shader(Some(ctx.resources.shaders.vignette.clone()));
                 ctx.g.draw(full_screen);
                 ctx.g.set_shader(None);
                 self.map.render_overlay(&self.player, 100, &mut ctx);
+                crate::AestheticShader {
+                    block_threshold: 0.2,
+                    line_threshold: 0.7,
+                    ..Self::AESTHETIC
+                }
             }
-            EndState::FadeToSequence(_) => {
+            EndState::FadeToSequence(frame) => {
                 self.map.render(&self.player, &mut ctx);
 
                 let boss = ctx.resources.sprites_metadata.boss_body;
@@ -245,12 +359,32 @@ impl BadEnd {
                     }
                 }
                 self.map.render_player(&self.player, &mut ctx);
+
+                for coord in std::array::IntoIter::new(ENEMY_POS) {
+                    let (x, y) = self.map.coord_to_mid_pixel(coord);
+                    let y = y + (ctx.time.as_secs_f32() + x * y).sin() * 5.;
+                    let scale = 1. / Self::SCALE;
+                    let tx = solstice_2d::Transform2D::translation(x, y)
+                        * solstice_2d::Transform2D::scale(scale, scale);
+                    ctx.g.image_with_transform(
+                        ctx.resources.sprites_metadata.enemy2_body.center_on(0., 0.),
+                        &ctx.resources.sprites,
+                        tx,
+                    );
+                }
+
                 ctx.g
                     .set_shader(Some(ctx.resources.shaders.vignette.clone()));
                 ctx.g.draw(full_screen);
                 ctx.g.set_shader(None);
+
+                crate::AestheticShader {
+                    block_threshold: lerp(0.2, 0.0, frame as f32 / u8::MAX as f32),
+                    line_threshold: lerp(0.7, 0.0, frame as f32 / u8::MAX as f32),
+                    ..Self::AESTHETIC
+                }
             }
-            EndState::Speech => {
+            EndState::Speech(_) => {
                 ctx.g.image(
                     crate::UVRect {
                         positions: full_screen,
@@ -266,6 +400,19 @@ impl BadEnd {
                     &ctx.resources.sprites,
                 );
                 self.map.render_player(&self.player, &mut ctx);
+
+                for coord in std::array::IntoIter::new(ENEMY_POS) {
+                    let (x, y) = self.map.coord_to_mid_pixel(coord);
+                    let y = y + (ctx.time.as_secs_f32() + x * y).sin() * 5.;
+                    let scale = 1. / Self::SCALE;
+                    let tx = solstice_2d::Transform2D::translation(x, y)
+                        * solstice_2d::Transform2D::scale(scale, scale);
+                    ctx.g.image_with_transform(
+                        ctx.resources.sprites_metadata.enemy2_body.center_on(0., 0.),
+                        &ctx.resources.sprites,
+                        tx,
+                    );
+                }
 
                 ctx.g
                     .set_shader(Some(ctx.resources.shaders.vignette.clone()));
@@ -283,8 +430,125 @@ impl BadEnd {
                 self.shodan_text.draw(&mut ctx);
                 ctx.g.set_color([1., 1., 1., 1.]);
                 ctx.g.set_camera(solstice_2d::Transform3D::default());
+
+                crate::AestheticShader {
+                    block_threshold: 0.0,
+                    line_threshold: 0.0,
+                    ..Self::AESTHETIC
+                }
             }
-        }
+            EndState::Die(timer) => {
+                ctx.g.image(
+                    crate::UVRect {
+                        positions: full_screen,
+                        uvs: ctx.resources.sprites_metadata.boss_body.uvs,
+                    },
+                    &ctx.resources.sprites,
+                );
+                ctx.g.image(
+                    crate::UVRect {
+                        positions: full_screen,
+                        uvs: ctx.resources.sprites_metadata.boss_color.uvs,
+                    },
+                    &ctx.resources.sprites,
+                );
+                self.map.render_player(&self.player, &mut ctx);
+
+                for coord in std::array::IntoIter::new(ENEMY_POS) {
+                    let (x, y) = self.map.coord_to_mid_pixel(coord);
+                    let y = y + (ctx.time.as_secs_f32() + x * y).sin() * 5.;
+                    let scale = 1. / Self::SCALE;
+                    let tx = solstice_2d::Transform2D::translation(x, y)
+                        * solstice_2d::Transform2D::scale(scale, scale);
+                    ctx.g.image_with_transform(
+                        ctx.resources.sprites_metadata.enemy2_body.center_on(0., 0.),
+                        &ctx.resources.sprites,
+                        tx,
+                    );
+                }
+
+                ctx.g
+                    .set_shader(Some(ctx.resources.shaders.vignette.clone()));
+                ctx.g.draw(full_screen);
+                ctx.g.set_shader(None);
+
+                let offset = solstice_2d::Transform2D::translation(25., 0.);
+                let inner = solstice_2d::Transform2D::scale(0.9, 0.9);
+                let outer = solstice_2d::Transform2D::scale(0.92, 0.92);
+                ctx.g.set_camera(outer * offset);
+                ctx.g.set_color([0., 0., 0., 1.]);
+                self.shodan_text.draw(&mut ctx);
+                ctx.g.set_camera(inner * offset);
+                ctx.g.set_color(Color::from_bytes(255, 75, 50, 255));
+                self.shodan_text.draw(&mut ctx);
+                ctx.g.set_color([1., 1., 1., 1.]);
+                ctx.g.set_camera(solstice_2d::Transform3D::default());
+
+                Self::AESTHETIC.lerp(
+                    &crate::AestheticShader {
+                        block_threshold: 1.,
+                        line_threshold: 1.,
+                        ..Self::AESTHETIC
+                    },
+                    timer.ratio(),
+                )
+            }
+            EndState::Over(timer) => {
+                ctx.g.image(
+                    crate::UVRect {
+                        positions: full_screen,
+                        uvs: ctx.resources.sprites_metadata.boss_body.uvs,
+                    },
+                    &ctx.resources.sprites,
+                );
+                ctx.g.image(
+                    crate::UVRect {
+                        positions: full_screen,
+                        uvs: ctx.resources.sprites_metadata.boss_color.uvs,
+                    },
+                    &ctx.resources.sprites,
+                );
+                self.map.render_player(&self.player, &mut ctx);
+
+                for coord in std::array::IntoIter::new(ENEMY_POS) {
+                    let (x, y) = self.map.coord_to_mid_pixel(coord);
+                    let y = y + (ctx.time.as_secs_f32() + x * y).sin() * 5.;
+                    let scale = 1. / Self::SCALE;
+                    let tx = solstice_2d::Transform2D::translation(x, y)
+                        * solstice_2d::Transform2D::scale(scale, scale);
+                    ctx.g.image_with_transform(
+                        ctx.resources.sprites_metadata.enemy2_body.center_on(0., 0.),
+                        &ctx.resources.sprites,
+                        tx,
+                    );
+                }
+
+                ctx.g
+                    .set_shader(Some(ctx.resources.shaders.vignette.clone()));
+                ctx.g.draw(full_screen);
+                ctx.g.set_shader(None);
+
+                let offset = solstice_2d::Transform2D::translation(25., 0.);
+                let inner = solstice_2d::Transform2D::scale(0.9, 0.9);
+                let outer = solstice_2d::Transform2D::scale(0.92, 0.92);
+                ctx.g.set_camera(outer * offset);
+                ctx.g.set_color([0., 0., 0., 1.]);
+                self.shodan_text.draw(&mut ctx);
+                ctx.g.set_camera(inner * offset);
+                ctx.g.set_color(Color::from_bytes(255, 75, 50, 255));
+                self.shodan_text.draw(&mut ctx);
+                ctx.g.set_color([1., 1., 1., 1.]);
+                ctx.g.set_camera(solstice_2d::Transform3D::default());
+
+                crate::AestheticShader {
+                    block_threshold: 1.,
+                    line_threshold: 1.,
+                    screen_transition_ratio: timer.ratio().min(1.),
+                    ..Default::default()
+                }
+            }
+            EndState::Black => crate::AestheticShader::default(),
+        };
 
         let g = &mut ctx.g;
         g.set_canvas(Some(ctx.aesthetic_canvas.clone()));
@@ -316,9 +580,7 @@ impl BadEnd {
 
         g.set_camera(solstice_2d::Transform2D::default());
         g.set_canvas(None);
-        g.set_shader(Some(
-            crate::AestheticShader::default().as_shader(ctx.resources),
-        ));
+        g.set_shader(Some(aesthetic.as_shader(ctx.resources)));
 
         {
             let d = viewport.width().min(viewport.height()) as f32;
@@ -369,6 +631,10 @@ fn feistel(input: u8) -> u8 {
         l = nl;
     }
     return ((r << 4) | l) & 0xff;
+}
+
+fn lerp(v0: f32, v1: f32, t: f32) -> f32 {
+    return v0 + t * (v1 - v0);
 }
 
 mod text {
