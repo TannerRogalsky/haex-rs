@@ -46,6 +46,7 @@ mod web {
 
     struct InnerContext {
         ctx: web_sys::AudioContext,
+        running: std::sync::atomic::AtomicBool,
         gain: web_sys::GainNode,
     }
 
@@ -58,7 +59,11 @@ mod web {
             let gain = ctx.create_gain().unwrap();
             gain.connect_with_audio_node(&ctx.destination()).unwrap();
             gain.gain().set_value(0.);
-            Self { ctx, gain }
+            Self {
+                ctx,
+                running: false.into(),
+                gain,
+            }
         }
     }
 
@@ -69,13 +74,14 @@ mod web {
     }
 
     pub struct AudioContext {
-        ctx: once_cell::sync::Lazy<InnerContext>,
+        ctx: InnerContext,
     }
 
     impl AudioContext {
         pub fn new() -> Self {
-            let ctx = once_cell::sync::Lazy::new(InnerContext::new as _);
-            Self { ctx }
+            Self {
+                ctx: InnerContext::new(),
+            }
         }
 
         pub fn set_global_volume(&mut self, volume: f32) {
@@ -105,6 +111,19 @@ mod web {
         }
 
         pub fn play(&self, sink: &Sink) {
+            if !self.ctx.running.load(std::sync::atomic::Ordering::SeqCst) {
+                match self.ctx.ctx.state() {
+                    web_sys::AudioContextState::Closed => panic!("audio context is closed!"),
+                    web_sys::AudioContextState::Suspended => {
+                        let _r = self.ctx.ctx.resume();
+                    }
+                    web_sys::AudioContextState::Running => self
+                        .ctx
+                        .running
+                        .store(true, std::sync::atomic::Ordering::SeqCst),
+                    _ => log::debug!("Unknown audio context."),
+                }
+            }
             let _r = sink.source.inner.play();
         }
 
