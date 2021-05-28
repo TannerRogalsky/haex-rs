@@ -133,7 +133,7 @@ impl Main {
             // player is at exit
             let grid_pos = self.map.inner.pixel_to_coord(self.player.position());
             if let Some(target) = self.map.graph.longest_path.last().copied() {
-                if grid_pos == target {
+                if !self.player.is_moving() && grid_pos == target {
                     let seed = ctx.time.as_millis() as u64;
                     if let Some(progression) = &self.progression.exit {
                         let sound = ctx.sinks().level_finish.clone();

@@ -247,21 +247,7 @@ impl DrawableMap for NavigableMap {
     }
 
     fn render_player(&self, player: &Player, ctx: &mut StateContext<'_, '_, '_>) {
-        use solstice_2d::Draw;
-        let (x, y) = player.position();
-        let rot = solstice_2d::Rad(ctx.time.as_secs_f32());
-        let tx = solstice_2d::Transform2D::translation(x, y);
-        let tx = tx * solstice_2d::Transform2D::rotation(rot);
-        ctx.g.draw_with_color_and_transform(
-            solstice_2d::Circle {
-                x: 0.,
-                y: 0.,
-                radius: self.inner.tile_size[0] / 4.,
-                segments: 4,
-            },
-            [0.6, 1., 0.4, 1.0],
-            tx,
-        );
+        self.inner.render_player(player, ctx);
     }
 
     fn render_overlay<'a>(

@@ -61,6 +61,13 @@ impl Player {
         }
     }
 
+    pub fn is_moving(&self) -> bool {
+        match &self.state {
+            State::Stationary(_) => false,
+            State::Moving(_) => true,
+        }
+    }
+
     pub fn try_move(&mut self, x: f32, y: f32, time: std::time::Duration) -> bool {
         match &mut self.state {
             State::Stationary(state) => {
