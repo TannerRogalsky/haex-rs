@@ -40,6 +40,7 @@ winit = { version = "0.24", default-features = false, features = ["web-sys"] }
 wasm-bindgen = "0.2"
 wasm-logger = "0.2"
 console_error_panic_hook = "0.1"
+wee_alloc = "0.4"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies.web-sys]
 version = "0.3"

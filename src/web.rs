@@ -1,6 +1,10 @@
 use crate::resources::{Audio, ImageData, ImageDataRepr, Resources, SpriteSheet};
 use wasm_bindgen::prelude::*;
 
+// Use `wee_alloc` as the global allocator.
+#[global_allocator]
+static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+
 fn into_js_value<E: std::fmt::Display>(err: E) -> JsValue {
     JsValue::from_str(&format!("{}", err))
 }
