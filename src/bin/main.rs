@@ -39,6 +39,7 @@ fn main() -> eyre::Result<()> {
             shaders_folder.join("map_obscuring.glsl"),
         )?,
         grayscale_shader_src: std::fs::read_to_string(shaders_folder.join("grayscale.glsl"))?,
+        player_shader_src: std::fs::read_to_string(shaders_folder.join("player.glsl"))?,
         audio: resources::Audio {
             agent_smith_laugh: new_audio("agent_smith_laugh.ogg")?,
             last_level_drone: new_audio("last_level_drone.ogg")?,

@@ -296,6 +296,10 @@ impl Game {
     }
 }
 
+pub fn lerp(v0: f32, v1: f32, t: f32) -> f32 {
+    return v0 + t * (v1 - v0);
+}
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct AestheticShader {
     pub block_threshold: f32,
@@ -308,9 +312,6 @@ pub struct AestheticShader {
 
 impl AestheticShader {
     pub fn lerp(&self, other: &Self, t: f32) -> Self {
-        fn lerp(v0: f32, v1: f32, t: f32) -> f32 {
-            return v0 + t * (v1 - v0);
-        }
         Self {
             block_threshold: lerp(self.block_threshold, other.block_threshold, t),
             line_threshold: lerp(self.line_threshold, other.line_threshold, t),

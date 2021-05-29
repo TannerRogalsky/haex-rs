@@ -1,7 +1,7 @@
 mod ui;
 
 use crate::{
-    state::{NavigableMap, State, StateContext},
+    state::{DrawableMap, NavigableMap, State, StateContext},
     ProgressionType,
 };
 use solstice_2d::{Color, Draw};
@@ -35,6 +35,7 @@ impl Main {
         map.inner.batch.unmap(ctx.g.ctx_mut());
 
         let player = {
+            // let start = map.graph.longest_path.last().copied().unwrap();
             let start = map.graph.longest_path[0];
             let (x, y) = map.inner.coord_to_mid_pixel(start);
             crate::player::Player::new(x, y)
@@ -140,9 +141,9 @@ impl Main {
                         ctx.audio_ctx.play(&sound);
                         match progression {
                             ProgressionType::Standard(settings) => {
-                                if let Ok(to) =
-                                    Self::with_seed(&mut ctx, seed, (**settings).clone())
-                                {
+                                // let to = Self::with_seed(&mut ctx, seed, self.progression.clone());
+                                let to = Self::with_seed(&mut ctx, seed, (**settings).clone());
+                                if let Ok(to) = to {
                                     return State::MainToMain(
                                         super::rotate_transition::RotateTransition {
                                             from: self,
@@ -196,9 +197,7 @@ impl Main {
             ctx.g.set_canvas(Some(ctx.canvas.clone()));
             ctx.g.clear(BLACK);
 
-            use super::DrawableMap;
             self.map.render(&self.player, &mut ctx);
-            self.map.render_player(&self.player, &mut ctx);
 
             for enemy in self.enemies.iter_mut() {
                 let mut ctx = crate::programs::State {
@@ -239,6 +238,11 @@ impl Main {
         g.set_shader(None);
 
         g.set_camera(camera.transform);
+
+        drop(g);
+        self.map.render_player(&self.player, &mut ctx);
+        let g = &mut ctx.g;
+
         let plane = solstice_2d::Plane::new(1., 1., 1, 1);
         g.image(plane, ctx.canvas);
 

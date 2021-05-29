@@ -286,7 +286,6 @@ impl BadEnd {
         let aesthetic = match self.state {
             EndState::Start => {
                 self.map.render(&self.player, &mut ctx);
-                self.map.render_player(&self.player, &mut ctx);
 
                 for coord in std::array::IntoIter::new(ENEMY_POS) {
                     let (x, y) = self.map.coord_to_mid_pixel(coord);
@@ -358,7 +357,6 @@ impl BadEnd {
                         );
                     }
                 }
-                self.map.render_player(&self.player, &mut ctx);
 
                 for coord in std::array::IntoIter::new(ENEMY_POS) {
                     let (x, y) = self.map.coord_to_mid_pixel(coord);
@@ -399,7 +397,6 @@ impl BadEnd {
                     },
                     &ctx.resources.sprites,
                 );
-                self.map.render_player(&self.player, &mut ctx);
 
                 for coord in std::array::IntoIter::new(ENEMY_POS) {
                     let (x, y) = self.map.coord_to_mid_pixel(coord);
@@ -452,7 +449,6 @@ impl BadEnd {
                     },
                     &ctx.resources.sprites,
                 );
-                self.map.render_player(&self.player, &mut ctx);
 
                 for coord in std::array::IntoIter::new(ENEMY_POS) {
                     let (x, y) = self.map.coord_to_mid_pixel(coord);
@@ -508,7 +504,6 @@ impl BadEnd {
                     },
                     &ctx.resources.sprites,
                 );
-                self.map.render_player(&self.player, &mut ctx);
 
                 for coord in std::array::IntoIter::new(ENEMY_POS) {
                     let (x, y) = self.map.coord_to_mid_pixel(coord);
@@ -575,6 +570,14 @@ impl BadEnd {
         g.set_shader(None);
 
         g.set_camera(camera.transform);
+        drop(g);
+
+        match &self.state {
+            EndState::Black => {}
+            _ => self.map.render_player(&self.player, &mut ctx),
+        }
+
+        let g = &mut ctx.g;
         let plane = solstice_2d::Plane::new(1., 1., 1, 1);
         g.image(plane, ctx.canvas);
 

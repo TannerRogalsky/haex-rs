@@ -46,6 +46,32 @@ impl Player {
         }
     }
 
+    pub fn render<C, T>(
+        radius: f32,
+        color: C,
+        tx: T,
+        ctx: &mut crate::state::StateContext,
+        camera: [f32; 3],
+    ) where
+        C: Into<solstice_2d::Color>,
+        T: Into<solstice_2d::Transform3D>,
+    {
+        use solstice_2d::{Draw, Rad};
+        let rot = solstice_2d::Transform3D::rotation(Rad(0.), Rad(0.), Rad(ctx.time.as_secs_f32()));
+        let geometry = solstice_2d::Polyhedron::octahedron(radius, 0);
+        let transform = tx.into() * rot;
+        let mut shader = ctx.resources.shaders.player.clone();
+        shader.send_uniform(
+            "lightPos",
+            solstice_2d::solstice::shader::RawUniformValue::Vec3(camera.into()),
+        );
+
+        let g = &mut ctx.g;
+        g.set_shader(Some(shader));
+        g.draw_with_color_and_transform(geometry, color, transform);
+        g.set_shader(None);
+    }
+
     pub fn position(&self) -> (f32, f32) {
         match &self.state {
             State::Stationary(state) => state.position,

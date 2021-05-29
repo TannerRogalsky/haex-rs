@@ -53,6 +53,7 @@ pub struct ResourcesWrapper {
     vignette_shader_src: Option<String>,
     map_obscuring_shader_src: Option<String>,
     grayscale_shader_src: Option<String>,
+    player_shader_src: Option<String>,
     music: Option<web_sys::HtmlMediaElement>,
     agent_smith_laugh: Option<web_sys::HtmlMediaElement>,
     last_level_drone: Option<web_sys::HtmlMediaElement>,
@@ -75,6 +76,7 @@ impl ResourcesWrapper {
             vignette_shader_src: None,
             map_obscuring_shader_src: None,
             grayscale_shader_src: None,
+            player_shader_src: None,
             music: None,
             agent_smith_laugh: None,
             last_level_drone: None,
@@ -123,6 +125,10 @@ impl ResourcesWrapper {
 
     pub fn set_grayscale_shader(&mut self, src: String) {
         self.grayscale_shader_src = Some(src);
+    }
+
+    pub fn set_player_shader(&mut self, src: String) {
+        self.player_shader_src = Some(src);
     }
 
     pub fn set_agent_smith_laugh(&mut self, source: web_sys::HtmlMediaElement) {
@@ -221,6 +227,9 @@ impl Wrapper {
             grayscale_shader_src: resources
                 .grayscale_shader_src
                 .ok_or(JsValue::from_str("missing map obscuring shader source"))?,
+            player_shader_src: resources
+                .player_shader_src
+                .ok_or(JsValue::from_str("missing player shader source"))?,
             audio: Audio {
                 agent_smith_laugh: new_audio(resources.agent_smith_laugh)?,
                 last_level_drone: new_audio(resources.last_level_drone)?,

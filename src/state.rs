@@ -90,7 +90,15 @@ impl Graph {
 
 pub trait DrawableMap {
     fn render<'a>(&'a self, player: &crate::player::Player, ctx: &mut StateContext<'_, '_, 'a>);
-    fn render_player(&self, player: &crate::player::Player, ctx: &mut StateContext<'_, '_, '_>);
+    fn render_player(&self, player: &crate::player::Player, ctx: &mut StateContext<'_, '_, '_>) {
+        self.render_player_with_transform(player, solstice_2d::Transform3D::default(), ctx);
+    }
+    fn render_player_with_transform(
+        &self,
+        player: &crate::player::Player,
+        tx: solstice_2d::Transform3D,
+        ctx: &mut StateContext<'_, '_, '_>,
+    );
     fn render_overlay<'a>(
         &'a self,
         player: &crate::player::Player,
@@ -246,8 +254,13 @@ impl DrawableMap for NavigableMap {
         }
     }
 
-    fn render_player(&self, player: &Player, ctx: &mut StateContext<'_, '_, '_>) {
-        self.inner.render_player(player, ctx);
+    fn render_player_with_transform(
+        &self,
+        player: &Player,
+        tx: solstice_2d::Transform3D,
+        ctx: &mut StateContext<'_, '_, '_>,
+    ) {
+        self.inner.render_player_with_transform(player, tx, ctx);
     }
 
     fn render_overlay<'a>(
@@ -260,26 +273,46 @@ impl DrawableMap for NavigableMap {
     }
 }
 
+pub fn player_tx(
+    player: &crate::player::Player,
+    map: &crate::state::Map,
+) -> solstice_2d::Transform3D {
+    let (px, py) = player.position();
+    let [tw, _] = map.tile_size;
+    let [width, height] = map.pixel_dimensions();
+    let scale = 1. / width.max(height);
+    let radius = scale * tw / 4.;
+    let x = (px - width / 2.) * scale;
+    let y = (py - height / 2.) * scale;
+
+    solstice_2d::Transform3D::translation(x, y, radius)
+}
+
 impl DrawableMap for Map {
     fn render<'a>(&'a self, _player: &crate::player::Player, ctx: &mut StateContext<'_, '_, 'a>) {
         self.draw(ctx);
     }
 
-    fn render_player(&self, player: &Player, ctx: &mut StateContext<'_, '_, '_>) {
-        use solstice_2d::Draw;
-        let (x, y) = player.position();
-        let rot = solstice_2d::Rad(ctx.time.as_secs_f32());
-        let tx = solstice_2d::Transform2D::translation(x, y);
-        let tx = tx * solstice_2d::Transform2D::rotation(rot);
-        ctx.g.draw_with_color_and_transform(
-            solstice_2d::Circle {
-                x: 0.,
-                y: 0.,
-                radius: self.tile_size[0] / 4.,
-                segments: 4,
-            },
-            [0.6, 1., 0.4, 1.0],
-            tx,
+    fn render_player_with_transform(
+        &self,
+        player: &Player,
+        tx: solstice_2d::Transform3D,
+        ctx: &mut StateContext,
+    ) {
+        let [tw, _] = self.tile_size;
+        let [width, height] = self.pixel_dimensions();
+        let scale = 1. / width.max(height);
+        let radius = scale * tw / 4.;
+
+        let mut camera = Camera::new(256., 256.);
+        camera.for_map(self, player);
+
+        Player::render(
+            radius,
+            [1., 0., 0., 1.],
+            tx * player_tx(player, self),
+            ctx,
+            camera.transform.inverse_transform_point(0., 0., 0.),
         );
     }
 
@@ -341,6 +374,11 @@ impl Map {
                 height,
             },
         })
+    }
+
+    pub fn pixel_dimensions(&self) -> [f32; 2] {
+        let [tw, th] = self.tile_size;
+        [tw * self.grid.width as f32, th * self.grid.height as f32]
     }
 
     pub fn coord_to_mid_pixel(&self, coord: crate::map::Coord) -> (f32, f32) {
