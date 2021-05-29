@@ -377,6 +377,12 @@ mod quads {
             self
         }
 
+        pub fn with_size(mut self, width: f32, height: f32) -> Self {
+            self.positions.width = width;
+            self.positions.height = height;
+            self
+        }
+
         pub fn at_zero(mut self) -> Self {
             self.positions.x = 0.;
             self.positions.y = 0.;

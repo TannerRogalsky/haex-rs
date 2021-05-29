@@ -253,14 +253,29 @@ impl DrawableMap for NavigableMap {
         if let Some(end) = self.graph.longest_path.last().copied() {
             use solstice_2d::Draw;
             let (x, y) = self.inner.coord_to_mid_pixel(end);
-            ctx.g.draw_with_color(
-                solstice_2d::Circle {
-                    x,
-                    y,
-                    radius: self.inner.tile_size[0] / 4.,
-                    segments: 20,
-                },
-                [0.3, 0.2, 0.8, 1.],
+            let [tw, th] = self.inner.tile_size;
+            let [width, height] = [tw / 2., th / 2.];
+
+            let pos = solstice_2d::Transform2D::translation(x, y);
+            let rot = solstice_2d::Transform2D::rotation(solstice_2d::Rad(ctx.time.as_secs_f32()));
+
+            ctx.g.image(
+                ctx.resources
+                    .sprites_metadata
+                    .exit_body
+                    .with_size(width, height)
+                    .center_on(x, y),
+                &ctx.resources.sprites,
+            );
+            ctx.g.image_with_color_and_transform(
+                ctx.resources
+                    .sprites_metadata
+                    .exit_alpha
+                    .with_size(width, height)
+                    .center_on(0., 0.),
+                &ctx.resources.sprites,
+                [0.2, 1., 0.4, 1.],
+                pos * rot,
             );
         }
     }
@@ -414,9 +429,10 @@ impl Map {
         let (cw, ch) = ctx.canvas.dimensions();
         let x = cw / (gw as f32 * tw);
         let y = ch / (gh as f32 * th);
+
+        let shader = ctx.resources.shaders.grayscale.clone();
         ctx.g.set_camera(solstice_2d::Transform2D::scale(x, y));
-        ctx.g
-            .set_shader(Some(ctx.resources.shaders.grayscale.clone()));
+        ctx.g.set_shader(Some(shader));
         ctx.g.image(self.batch.geometry(), &ctx.resources.sprites);
         ctx.g.set_shader(None);
     }
