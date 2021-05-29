@@ -129,10 +129,20 @@ impl NavigableMap {
             })
         }
 
-        let dead_ends = find_dead_ends(&graph).collect::<Vec<_>>();
-        let mut longest_path = vec![];
-        for from in dead_ends.iter().copied() {
-            for to in dead_ends.iter().copied() {
+        let longest_path = {
+            let dead_ends = find_dead_ends(&graph).collect::<Vec<_>>();
+            let couples = dead_ends[..dead_ends.len() - 1]
+                .iter()
+                .copied()
+                .enumerate()
+                .flat_map(|(index, start)| {
+                    dead_ends[(index + 1)..]
+                        .iter()
+                        .copied()
+                        .map(move |end| (start, end))
+                });
+            let mut longest_path = vec![];
+            for (from, to) in couples {
                 let path = petgraph::algo::astar(&graph, from, |node| node == to, |_| 1, |_| 0);
                 if let Some((_cost, path)) = path {
                     if path.len() > longest_path.len() {
@@ -140,7 +150,8 @@ impl NavigableMap {
                     }
                 }
             }
-        }
+            longest_path
+        };
 
         Self {
             inner: map,
