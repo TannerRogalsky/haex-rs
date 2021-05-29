@@ -41,10 +41,7 @@ impl Main {
             crate::player::Player::new(x, y)
         };
 
-        let enemies = vec![{
-            let (x, y) = map.inner.coord_to_mid_pixel((0, 0));
-            crate::enemy::Enemy::new_basic(x, y)
-        }];
+        let enemies = vec![];
 
         Ok(Self {
             map,
