@@ -29,7 +29,7 @@ impl Main {
         seed: u64,
         settings: crate::MapProgression,
     ) -> Result<Self, solstice_2d::GraphicsError> {
-        let crate::map::MapGenSettings { width, height, .. } = settings.settings;
+        let crate::map::MapGenSettings { width, height,enemies,.. } = settings.settings;
         let map = super::Map::with_seed(width, height, seed, ctx)?;
         let mut map = NavigableMap::with_map(map);
         map.inner.batch.unmap(ctx.g.ctx_mut());
@@ -43,7 +43,7 @@ impl Main {
 
         let mut rng: rand::rngs::SmallRng = rand::SeedableRng::seed_from_u64(seed);
         let enemies = map
-            .get_enemy_spawns(5, &player, &mut rng)
+            .get_enemy_spawns(enemies.basic_count, &player, &mut rng)
             .map(|coord| {
                 let (x, y) = map.inner.coord_to_mid_pixel(coord);
                 crate::enemy::Enemy::new_basic(x, y)

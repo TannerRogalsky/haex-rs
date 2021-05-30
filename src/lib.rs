@@ -151,7 +151,8 @@ impl Game {
             settings: map::MapGenSettings {
                 width: 4,
                 height: 4,
-                programs: map::ProgramGenSettings { nop_slide_count: 0 },
+                programs: map::ProgramGenSettings::default(),
+                enemies: map::EnemyGenSettings::default(),
                 aesthetic: crate::AestheticShader {
                     random_shift_scale: 0.001,
                     radial_scale: 1.0,
@@ -162,7 +163,8 @@ impl Game {
                 settings: map::MapGenSettings {
                     width: 8,
                     height: 8,
-                    programs: map::ProgramGenSettings { nop_slide_count: 0 },
+                    programs: map::ProgramGenSettings::default(),
+                    enemies: map::EnemyGenSettings::default(),
                     aesthetic: AestheticShader {
                         block_threshold: 0.093,
                         line_threshold: 0.33,
@@ -175,7 +177,8 @@ impl Game {
                     settings: map::MapGenSettings {
                         width: 12,
                         height: 12,
-                        programs: map::ProgramGenSettings { nop_slide_count: 0 },
+                        programs: map::ProgramGenSettings::default(),
+                        enemies: map::EnemyGenSettings::default(),
                         aesthetic: AestheticShader {
                             block_threshold: 0.11,
                             line_threshold: 0.39,

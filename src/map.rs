@@ -169,12 +169,19 @@ pub struct MapGenSettings {
     pub width: usize,
     pub height: usize,
     pub programs: ProgramGenSettings,
+    pub enemies: EnemyGenSettings,
     pub aesthetic: crate::AestheticShader,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
+pub struct EnemyGenSettings {
+    pub basic_count: usize,
+}
+
+#[derive(Debug, Copy, Clone, Default)]
 pub struct ProgramGenSettings {
     pub nop_slide_count: usize,
+    pub noclip_count: usize,
 }
 
 pub fn apply_not_corner_bit(grid: &mut DirectionGrid) {
