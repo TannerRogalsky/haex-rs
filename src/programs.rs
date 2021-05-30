@@ -66,3 +66,12 @@ impl NopSlide {
         Self { callback: id }
     }
 }
+
+pub struct NoClip;
+
+impl NoClip {
+    pub fn new(state: StateMut) -> Self {
+        state.player.programs.clip_count += 1;
+        Self
+    }
+}

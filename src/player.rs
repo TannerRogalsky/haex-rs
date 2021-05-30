@@ -17,6 +17,18 @@ enum State {
 #[derive(Default)]
 pub struct Programs {
     pub nop_slide: usize,
+    pub clip_count: usize,
+}
+
+impl Programs {
+    fn use_clip(&mut self) -> bool {
+        if self.clip_count > 0 {
+            self.clip_count -= 1;
+            true
+        } else {
+            false
+        }
+    }
 }
 
 pub struct Player {
@@ -94,18 +106,24 @@ impl Player {
         }
     }
 
-    pub fn try_move(&mut self, x: f32, y: f32, time: std::time::Duration) -> bool {
+    pub fn try_grid_move(&mut self, direction: crate::map::Direction, map: &crate::state::Map) {
+        let position = self.position();
         match &mut self.state {
             State::Stationary(state) => {
-                self.state = State::Moving(Moving {
-                    origin: state.position,
-                    target: (x, y),
-                    time,
-                    elapsed: Default::default(),
-                });
-                true
+                let start = map.pixel_to_coord(position);
+                if let Ok(end) = crate::map::neighbor_coord(start, direction) {
+                    if map.grid.valid_move(start, direction).is_some() || self.programs.use_clip() {
+                        let (x, y) = map.coord_to_mid_pixel(end);
+                        self.state = State::Moving(Moving {
+                            origin: state.position,
+                            target: (x, y),
+                            time: std::time::Duration::from_secs_f32(0.2),
+                            elapsed: Default::default(),
+                        });
+                    }
+                }
             }
-            _ => false,
+            _ => {}
         }
     }
 }

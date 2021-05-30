@@ -118,12 +118,7 @@ impl Main {
 
         if !self.ui_state.is_open() {
             if let Some(direction) = direction {
-                let start = self.map.inner.pixel_to_coord(self.player.position());
-                if let Some(end) = self.map.inner.grid.valid_move(start, direction) {
-                    let (x, y) = self.map.inner.coord_to_mid_pixel(end);
-                    let time = std::time::Duration::from_secs_f32(0.2);
-                    self.player.try_move(x, y, time);
-                }
+                self.player.try_grid_move(direction, &self.map.inner);
             }
         }
 

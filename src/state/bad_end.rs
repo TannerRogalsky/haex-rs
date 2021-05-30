@@ -176,12 +176,7 @@ impl BadEnd {
         };
 
         if let Some(direction) = direction {
-            let start = self.map.pixel_to_coord(self.player.position());
-            if let Some(end) = self.map.grid.valid_move(start, direction) {
-                let (x, y) = self.map.coord_to_mid_pixel(end);
-                let time = std::time::Duration::from_secs_f32(0.2);
-                self.player.try_move(x, y, time);
-            }
+            self.player.try_grid_move(direction, &self.map)
         }
 
         self.player.update(dt);

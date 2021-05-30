@@ -59,12 +59,14 @@ impl UIState {
                     }
                     crate::VirtualKeyCode::S => {
                         open.selected += 1;
-                        open.selected = open.selected.max(1);
+                        open.selected = open.selected.min(2);
                     }
                     crate::VirtualKeyCode::D => {
                         if open.selected == 0 {
                             let r = crate::programs::NopSlide::new(prog_state);
                             return Some(r.callback);
+                        } else if open.selected == 1 {
+                            crate::programs::NoClip::new(prog_state);
                         }
                     }
                     _ => {}
@@ -199,13 +201,15 @@ impl UIState {
 
                 let font_id = resources.pixel_font;
                 let programs = &player.programs;
-                g.print(
+                let text = [
                     format!("nop_slide: {}", programs.nop_slide),
-                    font_id,
-                    SCALE,
-                    text_bounds(0),
-                );
-                g.print("EOF", font_id, SCALE, text_bounds(1));
+                    format!("noclip: {}", programs.clip_count),
+                ];
+                let count = text.len();
+                for (index, text) in std::array::IntoIter::new(text).enumerate() {
+                    g.print(text, font_id, SCALE, text_bounds(index));
+                }
+                g.print("EOF", font_id, SCALE, text_bounds(count));
                 g.set_color([1., 1., 0., 1.]);
                 g.print(">", font_id, SCALE, {
                     let mut b = text_bounds(state.selected);
