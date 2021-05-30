@@ -21,7 +21,7 @@ impl Main {
         ctx: &mut StateContext,
         settings: crate::MapProgression,
     ) -> Result<Self, solstice_2d::GraphicsError> {
-        Self::with_seed(ctx, 0, settings)
+        Self::with_seed(ctx, ctx.time.as_millis() as _, settings)
     }
 
     pub fn with_seed(
@@ -41,7 +41,14 @@ impl Main {
             crate::player::Player::new(x, y)
         };
 
-        let enemies = vec![];
+        let mut rng: rand::rngs::SmallRng = rand::SeedableRng::seed_from_u64(seed);
+        let enemies = map
+            .get_enemy_spawns(5, &player, &mut rng)
+            .map(|coord| {
+                let (x, y) = map.inner.coord_to_mid_pixel(coord);
+                crate::enemy::Enemy::new_basic(x, y)
+            })
+            .collect::<Vec<_>>();
 
         Ok(Self {
             map,
@@ -73,12 +80,21 @@ impl Main {
         self.ui_state.update(dt);
 
         for enemy in self.enemies.iter_mut() {
-            let mut ctx = crate::programs::StateMut {
+            let mut prog_ctx = crate::programs::StateMut {
                 ctx: &mut ctx,
                 player: &mut self.player,
                 map: &mut self.map.inner,
             };
-            enemy.update(dt, &mut ctx);
+            enemy.update(dt, &mut prog_ctx);
+            if enemy.collides_with(&self.player, &self.map.inner) {
+                let laugh = ctx.sinks().agent_smith_laugh.clone();
+                ctx.audio_ctx.play(&laugh);
+                return State::MainToBlack(super::shatter_transition::ShatterTransition::new(
+                    self,
+                    super::black::Black::new(std::time::Duration::from_secs_f32(1.)),
+                    std::time::Duration::from_secs_f32(1.5),
+                ));
+            }
         }
 
         if let Some(active_program) = self.active_program {
@@ -180,8 +196,7 @@ impl Main {
         State::Main(self)
     }
 
-    pub fn render<'a>(&'a mut self, mut ctx: StateContext<'a, '_, 'a>) {
-        let viewport = ctx.g.ctx_mut().viewport().clone();
+    pub fn render_into_canvas<'a>(&'a mut self, ctx: &mut StateContext<'_, '_, 'a>) {
         let (w, h) = ctx.aesthetic_canvas.dimensions();
         let mut camera = super::Camera::new(w, h);
         camera.for_map(&self.map.inner, &self.player);
@@ -194,18 +209,18 @@ impl Main {
             ctx.g.set_canvas(Some(ctx.canvas.clone()));
             ctx.g.clear(BLACK);
 
-            self.map.render(&self.player, &mut ctx);
+            self.map.render(&self.player, ctx);
 
             for enemy in self.enemies.iter_mut() {
                 let mut ctx = crate::programs::State {
-                    ctx: &mut ctx,
+                    ctx,
                     player: &self.player,
                     map: &self.map.inner,
                 };
                 enemy.render(&mut ctx);
             }
 
-            self.map.render_overlay(&self.player, 2, &mut ctx);
+            self.map.render_overlay(&self.player, 2, ctx);
 
             ctx.g.set_camera(solstice_2d::Transform2D::default());
         }
@@ -237,7 +252,7 @@ impl Main {
         g.set_camera(camera.transform);
 
         drop(g);
-        self.map.render_player(&self.player, &mut ctx);
+        self.map.render_player(&self.player, ctx);
         let g = &mut ctx.g;
 
         let plane = solstice_2d::Plane::new(1., 1., 1, 1);
@@ -248,16 +263,19 @@ impl Main {
         if cfg!(debug_assertions) {
             self.ui_state.render(g, ctx.resources, &self.player);
         }
+    }
 
-        g.set_canvas(None);
-        g.set_shader(Some(
-            self.progression.settings.aesthetic.as_shader(ctx.resources),
-        ));
+    pub fn render<'a>(&'a mut self, mut ctx: StateContext<'_, '_, 'a>) {
+        let shader = self.progression.settings.aesthetic.as_shader(ctx.resources);
+        self.render_into_canvas(&mut ctx);
+        ctx.g.set_canvas(None);
+        ctx.g.set_shader(Some(shader));
 
         {
+            let viewport = ctx.g.ctx_mut().viewport();
             let d = viewport.width().min(viewport.height()) as f32;
             let x = viewport.width() as f32 / 2. - d / 2.;
-            g.image(
+            ctx.g.image(
                 solstice_2d::Rectangle {
                     x,
                     y: 0.0,

@@ -2,6 +2,10 @@ use haex::*;
 use image::DynamicImage;
 
 fn main() -> eyre::Result<()> {
+    simple_logger::SimpleLogger::new()
+        .with_level(log::LevelFilter::Debug)
+        .init()?;
+
     let (width, height) = (1280, 720);
     let event_loop = glutin::event_loop::EventLoop::new();
     let wb = glutin::window::WindowBuilder::new()

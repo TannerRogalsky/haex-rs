@@ -1,10 +1,13 @@
 mod bad_end;
+mod black;
 mod main;
 mod menu;
 mod rotate_transition;
+mod shatter_transition;
 
 use crate::player::Player;
 use camera::Camera;
+use std::option::Option::None;
 
 pub struct StateContext<'a, 'b, 'c> {
     pub resources: &'a crate::resources::LoadedResources,
@@ -89,19 +92,19 @@ impl Graph {
 }
 
 pub trait DrawableMap {
-    fn render<'a>(&'a self, player: &crate::player::Player, ctx: &mut StateContext<'_, '_, 'a>);
-    fn render_player(&self, player: &crate::player::Player, ctx: &mut StateContext<'_, '_, '_>) {
+    fn render<'a>(&'a self, player: &Player, ctx: &mut StateContext<'_, '_, 'a>);
+    fn render_player(&self, player: &Player, ctx: &mut StateContext<'_, '_, '_>) {
         self.render_player_with_transform(player, solstice_2d::Transform3D::default(), ctx);
     }
     fn render_player_with_transform(
         &self,
-        player: &crate::player::Player,
+        player: &Player,
         tx: solstice_2d::Transform3D,
         ctx: &mut StateContext<'_, '_, '_>,
     );
     fn render_overlay<'a>(
         &'a self,
-        player: &crate::player::Player,
+        player: &Player,
         view_distance: i32,
         ctx: &mut StateContext<'_, '_, 'a>,
     );
@@ -161,14 +164,153 @@ impl NavigableMap {
             },
         }
     }
+
+    pub fn get_enemy_spawns<'a, R: rand::Rng>(
+        &'a self,
+        max: usize,
+        player: &Player,
+        rng: &'a mut R,
+    ) -> enemy_spawn::SpawnIterator<impl FnMut() -> Option<(usize, usize)> + 'a> {
+        let player_exclusion_size = 2;
+        let player_exclusion = {
+            let (x, y) = self.inner.pixel_to_coord(player.position());
+            let x1 = x.saturating_sub(player_exclusion_size);
+            let y1 = y.saturating_sub(player_exclusion_size);
+            let x2 = (x + player_exclusion_size).max(self.inner.grid.width - 1);
+            let y2 = (y + player_exclusion_size).max(self.inner.grid.height - 1);
+            [x1, y1, x2, y2]
+        };
+        let valid_count = self.inner.grid.width * self.inner.grid.height;
+
+        let is_excluded = move |(x, y): (usize, usize)| -> bool {
+            let [x1, y1, x2, y2] = player_exclusion;
+            x1 <= x && x < x2 && y1 <= y && y < y2
+        };
+
+        let mut iter = enemy_spawn::bag_random(valid_count, rng);
+        enemy_spawn::SpawnIterator::new(max, move || {
+            while let Some(next) = iter.next() {
+                let coord = self.inner.grid.index_to_coord(next);
+                if !is_excluded(coord) {
+                    return Some(coord);
+                }
+            }
+            None
+        })
+    }
 }
 
-fn overlay(
-    ctx: &mut StateContext<'_, '_, '_>,
-    map: &Map,
-    player: &crate::player::Player,
-    view_distance: i32,
-) {
+mod enemy_spawn {
+    pub fn bag_random<R: rand::Rng>(count: usize, rng: &mut R) -> impl Iterator<Item = usize> {
+        let prime = (count..).find(|n| is_prime(*n)).unwrap();
+
+        let skip = {
+            let mut skip = 0;
+            while skip % prime == 0 {
+                let a = rng.gen_range(0..prime) + 1;
+                let b = rng.gen_range(0..prime) + 1;
+                let c = rng.gen_range(0..prime) + 1;
+                skip = a * (count * count) + b * count + c;
+            }
+            skip
+        };
+
+        let mut next = 0;
+        let mut returned = 0;
+        std::iter::from_fn(move || {
+            if returned >= count {
+                None
+            } else {
+                loop {
+                    next += skip;
+                    next %= prime;
+
+                    if next < count {
+                        break;
+                    }
+                }
+                returned += 1;
+                Some(next)
+            }
+        })
+    }
+
+    fn is_prime(n: usize) -> bool {
+        if n <= 1 {
+            return false;
+        }
+        if n <= 3 {
+            return true;
+        }
+
+        // This is checked so that we can skip
+        // middle five numbers in below loop
+        if n % 2 == 0 || n % 3 == 0 {
+            return false;
+        }
+
+        let mut i = 5;
+        while i * i < n {
+            if n % i == 0 || n % (i + 2) == 0 {
+                return false;
+            }
+            i += 6;
+        }
+
+        true
+    }
+
+    pub struct SpawnIterator<F> {
+        max: usize,
+        inner: std::iter::Take<std::iter::FromFn<F>>,
+    }
+
+    impl<T, F> SpawnIterator<F>
+    where
+        F: FnMut() -> Option<T>,
+    {
+        pub fn new(max: usize, inner: F) -> Self {
+            Self {
+                max,
+                inner: std::iter::from_fn(inner).take(max),
+            }
+        }
+    }
+
+    impl<T, F> std::iter::FusedIterator for SpawnIterator<F> where F: FnMut() -> Option<T> {}
+
+    impl<T, F> std::iter::Iterator for SpawnIterator<F>
+    where
+        F: FnMut() -> Option<T>,
+    {
+        type Item = T;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            self.inner.next()
+        }
+
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            (0, Some(self.max))
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn bag_random_test() {
+            let mut rng: rand::rngs::SmallRng = rand::SeedableRng::seed_from_u64(0);
+            let count = 50;
+            let v = bag_random(count, &mut rng).collect::<std::collections::BTreeSet<_>>();
+            assert_eq!(v.len(), count);
+            assert_eq!(v.iter().next(), Some(&0));
+            assert_eq!(v.iter().last(), Some(&(count - 1)));
+        }
+    }
+}
+
+fn overlay(ctx: &mut StateContext<'_, '_, '_>, map: &Map, player: &Player, view_distance: i32) {
     use solstice_2d::Draw;
 
     let [tw, th] = map.tile_size;
@@ -242,7 +384,7 @@ fn overlay(
 }
 
 impl DrawableMap for NavigableMap {
-    fn render<'a>(&'a self, _player: &crate::player::Player, ctx: &mut StateContext<'_, '_, 'a>) {
+    fn render<'a>(&'a self, _player: &Player, ctx: &mut StateContext<'_, '_, 'a>) {
         self.inner.draw(ctx);
 
         if cfg!(debug_assertions) {
@@ -299,10 +441,7 @@ impl DrawableMap for NavigableMap {
     }
 }
 
-pub fn player_tx(
-    player: &crate::player::Player,
-    map: &crate::state::Map,
-) -> solstice_2d::Transform3D {
+pub fn player_tx(player: &Player, map: &crate::state::Map) -> solstice_2d::Transform3D {
     let (px, py) = player.position();
     let [tw, _] = map.tile_size;
     let [width, height] = map.pixel_dimensions();
@@ -315,7 +454,7 @@ pub fn player_tx(
 }
 
 impl DrawableMap for Map {
-    fn render<'a>(&'a self, _player: &crate::player::Player, ctx: &mut StateContext<'_, '_, 'a>) {
+    fn render<'a>(&'a self, _player: &Player, ctx: &mut StateContext<'_, '_, 'a>) {
         self.draw(ctx);
     }
 
@@ -442,8 +581,10 @@ pub enum State {
     Menu(menu::Menu),
     Main(main::Main),
     MainToMain(rotate_transition::RotateTransition<main::Main, main::Main>),
+    MainToBlack(shatter_transition::ShatterTransition<main::Main, black::Black>),
     BadEnd(bad_end::BadEnd),
     MainToBadEnd(rotate_transition::RotateTransition<main::Main, bad_end::BadEnd>),
+    Black(black::Black),
 }
 
 impl std::default::Default for State {
@@ -458,14 +599,19 @@ impl State {
         Ok(Self::Menu(menu::Menu::new()))
     }
 
-    pub fn update(self, dt: std::time::Duration, ctx: StateContext) -> Self {
+    pub fn update(mut self, dt: std::time::Duration, ctx: StateContext) -> Self {
         let ty = std::mem::discriminant(&self);
         let next = match self {
             State::Main(main) => main.update(dt, ctx),
             State::MainToMain(inner) => inner.update(dt, ctx),
             State::BadEnd(inner) => inner.update(dt, ctx),
             State::MainToBadEnd(inner) => inner.update(dt, ctx),
-            _ => self,
+            State::Menu(_) => self,
+            State::MainToBlack(inner) => inner.update(dt),
+            State::Black(ref mut inner) => {
+                inner.update(dt);
+                self
+            }
         };
         let next_ty = std::mem::discriminant(&next);
         if ty != next_ty {
@@ -481,6 +627,8 @@ impl State {
             State::MainToMain(inner) => inner.render(ctx),
             State::BadEnd(inner) => inner.render(ctx),
             State::MainToBadEnd(inner) => inner.render(ctx),
+            State::MainToBlack(inner) => inner.render(ctx),
+            State::Black(_) => {}
         }
     }
 
@@ -495,6 +643,8 @@ impl State {
             State::MainToMain(_) => {}
             State::BadEnd(_) => {}
             State::MainToBadEnd(_) => {}
+            State::MainToBlack(_) => {}
+            State::Black(_) => {}
         }
     }
 
@@ -520,11 +670,19 @@ impl State {
                 }
             }
             State::MainToBadEnd(_) => {}
+            State::MainToBlack(_) => {}
+            State::Black(inner) => {
+                if let Some(new_state) = inner.handle_key_event(state, key_code) {
+                    *self = new_state;
+                }
+            }
         }
     }
 }
 
 mod camera {
+    use super::{Map, Player};
+
     pub struct Camera {
         pub screen_dimension: [f32; 2],
         pub projection: solstice_2d::Perspective,
@@ -561,7 +719,7 @@ mod camera {
             self.transform = solstice_2d::Transform3D::translation(x, y, z) * rot;
         }
 
-        pub fn should_follow(&self, map: &crate::state::Map, scale: f32) -> bool {
+        pub fn should_follow(&self, map: &Map, scale: f32) -> bool {
             let [sw, sh] = self.screen_dimension;
             let [gw, gh] = map.grid.grid_size();
             let [tw, th] = map.tile_size;
@@ -570,20 +728,15 @@ mod camera {
             pw >= sw || ph >= sh
         }
 
-        pub fn for_map_with_scale(
-            &mut self,
-            map: &crate::state::Map,
-            player: &crate::player::Player,
-            scale: f32,
-        ) {
+        pub fn for_map_with_scale(&mut self, map: &Map, player: &Player, scale: f32) {
             let camera_should_follow = self.should_follow(map, scale);
             self.for_map_with_scale_and_follow(map, player, scale, camera_should_follow)
         }
 
         pub fn for_map_with_scale_and_follow(
             &mut self,
-            map: &crate::state::Map,
-            player: &crate::player::Player,
+            map: &Map,
+            player: &Player,
             scale: f32,
             camera_should_follow: bool,
         ) {
@@ -615,7 +768,7 @@ mod camera {
             }
         }
 
-        pub fn for_map(&mut self, map: &crate::state::Map, player: &crate::player::Player) {
+        pub fn for_map(&mut self, map: &Map, player: &Player) {
             self.for_map_with_scale(map, player, 1.);
         }
     }
