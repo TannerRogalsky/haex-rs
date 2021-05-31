@@ -35,7 +35,7 @@ vec4 effect(vec4 color, Image texture, vec2 tc, vec2 screen_coords) {
   vec2 tr = step(vec2(line_width), 1.0 - fract(color.xy));
   pct *= tr.x * tr.y;
 
-  vec2 uv = tc * uResolution.xy + elapsed / 10.0;
+  vec2 uv = screen_coords / 2. + elapsed / 10.;
   mat2 m = mat2( 1.6,  1.2, -1.2,  1.6 );
   float f = 0.0;
   f += 0.5000*noise(uv); uv = m*uv;
@@ -44,7 +44,7 @@ vec4 effect(vec4 color, Image texture, vec2 tc, vec2 screen_coords) {
   f += 0.0625*noise(uv); uv = m*uv;
 
   float c = mix(
-    1.0 - pct * (1.0 - min(1.0, f * 2.5) * Texel(texture, tc / grid_dimensions).r),
+    1.0 - pct * (1.0 - min(1.0, f * 2.5) * Texel(texture, tc).r),
     1.0 - pct * (1.0 - f),
     pow(sin(elapsed / 10.0), 2.0)
   );
