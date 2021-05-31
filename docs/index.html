@@ -47,18 +47,13 @@
 
 			let canvas = document.getElementById("game");
 
-			let keyToCode = (key) => {
-				if (key === "w") {
-					return KeyEvent.W;
-				} else if (key === "a") {
-					return KeyEvent.A;
-				}  else if (key === "s") {
-					return KeyEvent.S;
-				}  else if (key === "d") {
-					return KeyEvent.D;
-				}  else if (key === " ") {
-					return KeyEvent.Space;
-				}
+			let keyToCode = {
+				w: KeyEvent.W,
+				a: KeyEvent.A,
+				s: KeyEvent.S,
+				d: KeyEvent.D,
+				" ": KeyEvent.Space,
+				"Control": KeyEvent.Ctrl,
 			}
 
 			let isLeft = (button) => {
@@ -98,14 +93,15 @@
 			let game = new Wrapper(canvas, time, resources);
 
 			canvas.addEventListener('keydown', (event) => {
-				let key_code = keyToCode(event.key);
+				let key_code = keyToCode[event.key];
+				console.log(event.key, key_code);
 				if (key_code !== undefined && game) {
 					game.handle_key_down(key_code);
 				}
 			});
 
 			canvas.addEventListener('keyup', (event) => {
-				let key_code = keyToCode(event.key);
+				let key_code = keyToCode[event.key];
 				if (key_code !== undefined && game) {
 					game.handle_key_up(key_code);
 				}

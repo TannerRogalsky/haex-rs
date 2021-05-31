@@ -29,7 +29,12 @@ impl Main {
         seed: u64,
         settings: crate::MapProgression,
     ) -> Result<Self, solstice_2d::GraphicsError> {
-        let crate::map::MapGenSettings { width, height,enemies,.. } = settings.settings;
+        let crate::map::MapGenSettings {
+            width,
+            height,
+            enemies,
+            ..
+        } = settings.settings;
         let map = super::Map::with_seed(width, height, seed, ctx)?;
         let mut map = NavigableMap::with_map(map);
         map.inner.batch.unmap(ctx.g.ctx_mut());

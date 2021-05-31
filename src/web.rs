@@ -26,17 +26,19 @@ pub enum KeyEvent {
     S,
     D,
     Space,
+    Ctrl,
 }
 
-impl Into<winit::event::VirtualKeyCode> for KeyEvent {
-    fn into(self) -> winit::event::VirtualKeyCode {
+impl From<KeyEvent> for winit::event::VirtualKeyCode {
+    fn from(key: KeyEvent) -> Self {
         use winit::event::VirtualKeyCode;
-        match self {
+        match key {
             KeyEvent::W => VirtualKeyCode::W,
             KeyEvent::A => VirtualKeyCode::A,
             KeyEvent::S => VirtualKeyCode::S,
             KeyEvent::D => VirtualKeyCode::D,
             KeyEvent::Space => VirtualKeyCode::Space,
+            KeyEvent::Ctrl => VirtualKeyCode::LControl,
         }
     }
 }

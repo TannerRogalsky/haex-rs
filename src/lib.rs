@@ -164,7 +164,9 @@ impl Game {
                     width: 8,
                     height: 8,
                     programs: map::ProgramGenSettings::default(),
-                    enemies: map::EnemyGenSettings::default(),
+                    enemies: map::EnemyGenSettings {
+                        basic_count: 2
+                    },
                     aesthetic: AestheticShader {
                         block_threshold: 0.093,
                         line_threshold: 0.33,
@@ -178,7 +180,9 @@ impl Game {
                         width: 12,
                         height: 12,
                         programs: map::ProgramGenSettings::default(),
-                        enemies: map::EnemyGenSettings::default(),
+                        enemies: map::EnemyGenSettings {
+                            basic_count: 4
+                        },
                         aesthetic: AestheticShader {
                             block_threshold: 0.11,
                             line_threshold: 0.39,

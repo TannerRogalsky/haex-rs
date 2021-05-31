@@ -64,6 +64,12 @@ fn render<'a>(mut ctx: StateContext<'a, '_, 'a>, ratio: f32, states: [RenderStat
 
     const ROT: f32 = std::f32::consts::FRAC_PI_2;
 
+    let move_back = solstice_2d::Transform3D::translation(
+        0.,
+        0.,
+        (ratio * std::f32::consts::PI).sin().powf(2.) * -0.5,
+    );
+
     use solstice_2d::Rad;
     for (index, RenderState { map, player, .. }) in std::array::IntoIter::new(states).enumerate() {
         ctx.g.set_canvas(Some(ctx.canvas.clone()));
@@ -82,7 +88,7 @@ fn render<'a>(mut ctx: StateContext<'a, '_, 'a>, ratio: f32, states: [RenderStat
         let tx = tx * solstice_2d::Transform3D::rotation(Rad(0.), Rad(rot), Rad(0.));
         let tx = tx * solstice_2d::Transform3D::translation(0., 0., 1. / 2.);
 
-        g.set_camera(camera);
+        g.set_camera(camera * move_back);
         let plane = solstice_2d::Plane::new(1., 1., 1, 1);
         g.image_with_transform(plane, ctx.canvas, tx);
     }
@@ -90,7 +96,7 @@ fn render<'a>(mut ctx: StateContext<'a, '_, 'a>, ratio: f32, states: [RenderStat
     // let midpoint = from_tx.lerp_slerp(&to_tx, 0.5);
     let midpoint = solstice_2d::Transform3D::rotation(Rad(0.), Rad(ROT / 2.), Rad(0.));
     let midpoint = solstice_2d::Point3D::from(midpoint.transform_point(0., 0., 1.2));
-    let midpoint = midpoint.normalize().multiply_scalar(1.);
+    let midpoint = midpoint.normalize();
     let point_a = solstice_2d::Point3D::from(from_tx.transform_point(0., 0., 0.));
     let point_b = solstice_2d::Point3D::from(to_tx.transform_point(0., 0., 0.));
     let point = bezier::de_casteljau3(ratio, point_a, midpoint, point_b);
