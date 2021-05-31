@@ -4,6 +4,9 @@
 	<meta charset="utf-8">
 	<title>HAEX</title>
 	<style type="text/css">
+		* { margin:0; padding:0; } /* to remove the top and left whitespace */
+		html, body { width:100%; height:100%; } /* just to be sure these are full screen*/
+
 		body {
 			background-color: black;
 			box-sizing: border-box;
@@ -28,6 +31,12 @@
 		.text {
 			margin: 1rem;
 			color: white;
+		}
+
+		#game {
+			width:  100%;
+			height:  100%;
+			display: block;
 		}
 	</style>
 </head>
@@ -128,9 +137,13 @@
 			let time = performance.now();
 			let game = new Wrapper(canvas, time, resources);
 
+			canvas.width = document.body.clientWidth;
+			canvas.height = document.body.clientHeight;
+			game.handle_resize();
+
 			canvas.addEventListener('keydown', (event) => {
 				let key_code = keyToCode[event.key];
-				console.log(event.key, key_code);
+				// console.log(event.key, key_code);
 				if (key_code !== undefined && game) {
 					game.handle_key_down(key_code);
 					event.preventDefault();
@@ -173,8 +186,8 @@
 
 			canvas.addEventListener('fullscreenchange', (event) => {
 				if (document.fullscreenElement !== canvas) {
-					canvas.width = 1280;
-					canvas.height = 720;
+					canvas.width = document.body.clientWidth;
+					canvas.height = document.body.clientHeight;
 					if (game) {
 						game.handle_resize();
 					}
@@ -184,7 +197,7 @@
 			let resizeObserver = new ResizeObserver((entries) => {
 				canvas.width = canvas.clientWidth;
 				canvas.height = canvas.clientHeight;
-					game.handle_resize();
+				game.handle_resize();
 			});
 			resizeObserver.observe(canvas);
 
@@ -208,13 +221,13 @@
 	</script>
 	<div class="container">
 		<canvas class="item" id="game" width="720" height="720" tabindex="1"></canvas>
-		<div class="break"></div>
+		<!-- <div class="break"></div>
 		<button class="item" onclick="rfs()">Fullscreen</button>
 		<div class="item text">
 			<p>Controls:</p>
 			<p>Arrow Keys / Left Ctrl</p>
 			<p>Menu slider is volume.</p>
-		</div>
+		</div> -->
 	</div>
 </body>
 </html>
