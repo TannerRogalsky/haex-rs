@@ -59,16 +59,35 @@ impl UIState {
                     }
                     crate::VirtualKeyCode::S => {
                         open.selected += 1;
-                        open.selected = open.selected.min(2);
+                        open.selected = open.selected.min(3);
                     }
-                    crate::VirtualKeyCode::D => {
-                        if open.selected == 0 {
+                    crate::VirtualKeyCode::D => match open.selected {
+                        0 => {
                             let r = crate::programs::NopSlide::new(prog_state);
                             return Some(r.callback);
-                        } else if open.selected == 1 {
+                        }
+                        1 => {
                             crate::programs::NoClip::new(prog_state);
                         }
-                    }
+                        2 => {
+                            let vol = prog_state.ctx.audio_ctx.global_volume();
+                            prog_state
+                                .ctx
+                                .audio_ctx
+                                .set_global_volume((vol + 0.1).min(1.));
+                        }
+                        _ => {}
+                    },
+                    crate::VirtualKeyCode::A => match open.selected {
+                        2 => {
+                            let vol = prog_state.ctx.audio_ctx.global_volume();
+                            prog_state
+                                .ctx
+                                .audio_ctx
+                                .set_global_volume((vol - 0.1).max(0.));
+                        }
+                        _ => {}
+                    },
                     _ => {}
                 },
                 ElementState::Released => {}
@@ -133,6 +152,7 @@ impl UIState {
         g: &mut solstice_2d::GraphicsLock,
         resources: &crate::resources::LoadedResources,
         player: &crate::player::Player,
+        volume: f32,
     ) {
         use solstice_2d::Rectangle;
         const BG: solstice_2d::Color = solstice_2d::Color::new(0.2, 0.2, 0.2, 1.);
@@ -140,14 +160,14 @@ impl UIState {
 
         const SCALE: f32 = 8.;
         const OPEN_RECT: Rectangle = Rectangle {
-            x: 0.0,
-            y: 0.0,
+            x: 5.0,
+            y: 5.0,
             width: 100.,
             height: 100.,
         };
         const CLOSED_RECT: Rectangle = Rectangle {
-            x: 0.0,
-            y: 0.0,
+            x: 5.0,
+            y: 5.0,
             width: 50.,
             height: SCALE * 1.5,
         };
@@ -172,11 +192,16 @@ impl UIState {
                 g.draw_with_color(CLOSED_RECT, BG);
                 g.stroke_with_color(CLOSED_RECT, WHITE);
                 let count = player.programs.nop_slide;
+                let bounds = solstice_2d::Rectangle {
+                    x: CLOSED_RECT.x + 6.,
+                    y: CLOSED_RECT.y + 2.,
+                    ..CLOSED_RECT
+                };
                 g.print(
                     format!("PROGS {}", count),
                     resources.pixel_font,
                     SCALE,
-                    CLOSED_RECT,
+                    bounds,
                 );
             }
             UIState::Opening(timer) => {
@@ -204,6 +229,7 @@ impl UIState {
                 let text = [
                     format!("nop_slide: {}", programs.nop_slide),
                     format!("noclip: {}", programs.clip_count),
+                    format!("vol: {:.1}", volume),
                 ];
                 let count = text.len();
                 for (index, text) in std::array::IntoIter::new(text).enumerate() {

@@ -260,9 +260,12 @@ impl Main {
 
         g.set_camera(solstice_2d::Transform2D::default());
 
-        if cfg!(debug_assertions) {
-            self.ui_state.render(g, ctx.resources, &self.player);
-        }
+        self.ui_state.render(
+            g,
+            ctx.resources,
+            &self.player,
+            ctx.audio_ctx.global_volume(),
+        );
     }
 
     pub fn render<'a>(&'a mut self, mut ctx: StateContext<'_, '_, 'a>) {

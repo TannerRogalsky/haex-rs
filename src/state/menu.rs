@@ -208,6 +208,11 @@ impl Menu {
                 | crate::VirtualKeyCode::A
                 | crate::VirtualKeyCode::S
                 | crate::VirtualKeyCode::D => {
+                    if self.music.is_none() {
+                        let music = ctx.sinks().music.clone();
+                        ctx.audio_ctx.play(&music);
+                        self.music = Some(music);
+                    }
                     let settings = ctx.maps.clone();
                     let main = super::main::Main::new(&mut ctx, settings).ok()?;
                     Some(State::Main(main))
