@@ -202,8 +202,8 @@
 			resizeObserver.observe(canvas);
 
 			let loop = () => {
-				game.step(performance.now());
 				requestAnimationFrame(loop);
+				game.step(performance.now());
 			}
 			requestAnimationFrame(loop);
 		}
