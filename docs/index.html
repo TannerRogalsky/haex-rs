@@ -1,7 +1,35 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-	<title>Test</title>
+	<meta charset="utf-8">
+	<title>HAEX</title>
+	<style type="text/css">
+		body {
+			background-color: black;
+			box-sizing: border-box;
+		}
+
+		.container {
+			display: flex;
+			align-content: center;
+			justify-content: center;
+			flex-wrap: wrap;
+		}
+
+		.item {
+
+		}
+
+		.break {
+			flex-basis: 100%;
+			height: 1rem;
+		}
+
+		.text {
+			margin: 1rem;
+			color: white;
+		}
+	</style>
 </head>
 <body>
 	<script type="module">
@@ -52,6 +80,14 @@
 				a: KeyEvent.A,
 				s: KeyEvent.S,
 				d: KeyEvent.D,
+				k: KeyEvent.W,
+				h: KeyEvent.A,
+				j: KeyEvent.S,
+				l: KeyEvent.D,
+				"ArrowUp": KeyEvent.W,
+				"ArrowLeft": KeyEvent.A,
+				"ArrowDown": KeyEvent.S,
+				"ArrowRight": KeyEvent.D,
 				" ": KeyEvent.Space,
 				"Control": KeyEvent.Ctrl,
 			}
@@ -97,6 +133,7 @@
 				console.log(event.key, key_code);
 				if (key_code !== undefined && game) {
 					game.handle_key_down(key_code);
+					event.preventDefault();
 				}
 			});
 
@@ -104,6 +141,7 @@
 				let key_code = keyToCode[event.key];
 				if (key_code !== undefined && game) {
 					game.handle_key_up(key_code);
+					event.preventDefault();
 				}
 			});
 
@@ -165,9 +203,18 @@
 			canvas.requestFullscreen({
 				navigationUI: 'hide'
 			});
+			canvas.focus();
 		}
 	</script>
-<canvas id="game" width="1280" height="720" tabindex="1"></canvas>
-<button onclick="rfs()">Fullscreen</button>
+	<div class="container">
+		<canvas class="item" id="game" width="720" height="720" tabindex="1"></canvas>
+		<div class="break"></div>
+		<button class="item" onclick="rfs()">Fullscreen</button>
+		<div class="item text">
+			<p>Controls:</p>
+			<p>Arrow Keys / Left Ctrl</p>
+			<p>Menu slider is volume.</p>
+		</div>
+	</div>
 </body>
 </html>

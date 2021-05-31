@@ -11,6 +11,7 @@ export enum KeyEvent {
   S,
   D,
   Space,
+  Ctrl,
 }
 /**
 */
@@ -59,6 +60,10 @@ export class ResourcesWrapper {
 * @param {string} src
 */
   set_grayscale_shader(src: string): void;
+/**
+* @param {string} src
+*/
+  set_player_shader(src: string): void;
 /**
 * @param {HTMLMediaElement} source
 */
@@ -137,6 +142,7 @@ export interface InitOutput {
   readonly resourceswrapper_set_vignette_shader: (a: number, b: number, c: number) => void;
   readonly resourceswrapper_set_map_obscuring_shader: (a: number, b: number, c: number) => void;
   readonly resourceswrapper_set_grayscale_shader: (a: number, b: number, c: number) => void;
+  readonly resourceswrapper_set_player_shader: (a: number, b: number, c: number) => void;
   readonly resourceswrapper_set_agent_smith_laugh: (a: number, b: number) => void;
   readonly resourceswrapper_set_last_level_drone: (a: number, b: number) => void;
   readonly resourceswrapper_set_level_finish: (a: number, b: number) => void;

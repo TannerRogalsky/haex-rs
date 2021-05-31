@@ -231,7 +231,7 @@ function getArrayI32FromWasm0(ptr, len) {
 }
 /**
 */
-export const KeyEvent = Object.freeze({ W:0,"0":"W",A:1,"1":"A",S:2,"2":"S",D:3,"3":"D",Space:4,"4":"Space", });
+export const KeyEvent = Object.freeze({ W:0,"0":"W",A:1,"1":"A",S:2,"2":"S",D:3,"3":"D",Space:4,"4":"Space",Ctrl:5,"5":"Ctrl", });
 /**
 */
 export class ResourcesWrapper {
@@ -335,6 +335,14 @@ export class ResourcesWrapper {
         var ptr0 = passStringToWasm0(src, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         var len0 = WASM_VECTOR_LEN;
         wasm.resourceswrapper_set_grayscale_shader(this.ptr, ptr0, len0);
+    }
+    /**
+    * @param {string} src
+    */
+    set_player_shader(src) {
+        var ptr0 = passStringToWasm0(src, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len0 = WASM_VECTOR_LEN;
+        wasm.resourceswrapper_set_player_shader(this.ptr, ptr0, len0);
     }
     /**
     * @param {HTMLMediaElement} source

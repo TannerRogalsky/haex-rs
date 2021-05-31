@@ -14,6 +14,7 @@ export function resourceswrapper_set_menu_shader(a: number, b: number, c: number
 export function resourceswrapper_set_vignette_shader(a: number, b: number, c: number): void;
 export function resourceswrapper_set_map_obscuring_shader(a: number, b: number, c: number): void;
 export function resourceswrapper_set_grayscale_shader(a: number, b: number, c: number): void;
+export function resourceswrapper_set_player_shader(a: number, b: number, c: number): void;
 export function resourceswrapper_set_agent_smith_laugh(a: number, b: number): void;
 export function resourceswrapper_set_last_level_drone(a: number, b: number): void;
 export function resourceswrapper_set_level_finish(a: number, b: number): void;
