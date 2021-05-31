@@ -16,8 +16,8 @@ wasm-opt = ["-Oz", "--enable-mutable-globals"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-#solstice-2d = "0.2"
-solstice-2d = { path = "../solstice/solstice-2d" }
+solstice-2d = "0.2"
+#solstice-2d = { path = "../solstice/solstice-2d" }
 eyre = "0.6"
 serde = { version = "1.0", features = ["derive"] }
 vec_mut_scan = "0.4"
