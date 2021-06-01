@@ -325,26 +325,31 @@ fn overlay(ctx: &mut StateContext<'_, '_, '_>, map: &Map, player: &Player, view_
 
     let (px, py) = map.pixel_to_coord(player.position());
 
-    let vertices = map.seen.iter().filter_map(|(seen, (x, y))| {
-        use solstice_2d::solstice::{quad_batch::Quad, viewport::Viewport};
-        if *seen {
-            let d = (px as i32 - x as i32).abs() + (py as i32 - y as i32).abs();
-            if d <= view_distance {
-                None
-            } else {
-                let (px, py) = map.coord_to_mid_pixel((x, y));
-                let vertices = Quad::from(Viewport::new(px - half_w, py - half_h, tw, th))
-                    .map(|(x, y)| solstice_2d::Vertex2D {
-                        position: [x, y],
-                        color: [0.1, 0.1, 0.1, 0.7],
-                        ..Default::default()
-                    });
-                Some(std::array::IntoIter::new(vertices.vertices))
-            }
-        } else {
-            None
-        }
-    }).flatten().collect::<Vec<_>>();
+    let vertices =
+        map.seen
+            .iter()
+            .filter_map(|(seen, (x, y))| {
+                use solstice_2d::solstice::{quad_batch::Quad, viewport::Viewport};
+                if *seen {
+                    let d = (px as i32 - x as i32).abs() + (py as i32 - y as i32).abs();
+                    if d <= view_distance {
+                        None
+                    } else {
+                        let (px, py) = map.coord_to_mid_pixel((x, y));
+                        let vertices = Quad::from(Viewport::new(px - half_w, py - half_h, tw, th))
+                            .map(|(x, y)| solstice_2d::Vertex2D {
+                                position: [x, y],
+                                color: [0.1, 0.1, 0.1, 0.7],
+                                ..Default::default()
+                            });
+                        Some(std::array::IntoIter::new(vertices.vertices))
+                    }
+                } else {
+                    None
+                }
+            })
+            .flatten()
+            .collect::<Vec<_>>();
     let indices = (0..(vertices.len() / 4))
         .flat_map(|i| {
             let offset = i as u32 * 4;
@@ -356,32 +361,32 @@ fn overlay(ctx: &mut StateContext<'_, '_, '_>, map: &Map, player: &Player, view_
     ctx.g.set_shader(None);
     ctx.g.draw(geometry);
 
-    let vertices =
-        map.seen
-            .iter()
-            .filter_map(|(seen, (x, y))| {
-                use solstice_2d::solstice::{quad_batch::Quad, viewport::Viewport};
-                if *seen {
-                    None
-                } else {
-                    let (px, py) = map.coord_to_mid_pixel((x, y));
-                    let positions = Quad::from(Viewport::new(px - half_w, py - half_h, tw, th));
-                    let uvs = Quad::from(Viewport::new(u1 + u * x as f32, v1 + v * y as f32, u, v));
-                    let quad_uvs = Quad::from(Viewport::new(0., 0., 1., 1.));
-                    let vertices =
-                        positions
-                            .zip(uvs)
-                            .zip(quad_uvs)
-                            .map(|(((x, y), (u, v)), (u1, v1))| solstice_2d::Vertex2D {
-                                position: [x, y],
-                                color: [u1, v1, 1., 1.],
-                                uv: [u, v],
-                            });
-                    Some(std::array::IntoIter::new(vertices.vertices))
-                }
-            })
-            .flatten()
-            .collect::<Vec<_>>();
+    let vertices = map
+        .seen
+        .iter()
+        .filter_map(|(seen, (x, y))| {
+            use solstice_2d::solstice::{quad_batch::Quad, viewport::Viewport};
+            if *seen {
+                None
+            } else {
+                let (px, py) = map.coord_to_mid_pixel((x, y));
+                let positions = Quad::from(Viewport::new(px - half_w, py - half_h, tw, th));
+                let uvs = Quad::from(Viewport::new(u1 + u * x as f32, v1 + v * y as f32, u, v));
+                let quad_uvs = Quad::from(Viewport::new(0., 0., 1., 1.));
+                let vertices =
+                    positions
+                        .zip(uvs)
+                        .zip(quad_uvs)
+                        .map(|(((x, y), (u, v)), (u1, v1))| solstice_2d::Vertex2D {
+                            position: [x, y],
+                            color: [u1, v1, 1., 1.],
+                            uv: [u, v],
+                        });
+                Some(std::array::IntoIter::new(vertices.vertices))
+            }
+        })
+        .flatten()
+        .collect::<Vec<_>>();
     let indices = (0..(vertices.len() / 4))
         .flat_map(|i| {
             let offset = i as u32 * 4;

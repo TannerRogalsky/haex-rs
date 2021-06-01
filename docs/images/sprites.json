@@ -37,6 +37,15 @@
 	"pivot": {"x":0.5,"y":0.5}
 },
 {
+	"filename": "empty.png",
+	"frame": {"x":265,"y":131,"w":1,"h":1},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":1,"h":1},
+	"sourceSize": {"w":1,"h":1},
+	"pivot": {"x":0.5,"y":0.5}
+},
+{
 	"filename": "enemy1_alpha.png",
 	"frame": {"x":565,"y":44,"w":64,"h":64},
 	"rotated": false,
@@ -101,7 +110,7 @@
 },
 {
 	"filename": "enemy3_body.png",
-	"frame": {"x":265,"y":133,"w":64,"h":64},
+	"frame": {"x":270,"y":133,"w":64,"h":64},
 	"rotated": false,
 	"trimmed": false,
 	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":64},
@@ -110,7 +119,7 @@
 },
 {
 	"filename": "enemy3_color.png",
-	"frame": {"x":333,"y":133,"w":64,"h":64},
+	"frame": {"x":338,"y":133,"w":64,"h":64},
 	"rotated": false,
 	"trimmed": false,
 	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":64},
@@ -146,7 +155,7 @@
 },
 {
 	"filename": "tile_masks/tile_280_mask.png",
-	"frame": {"x":401,"y":133,"w":64,"h":64},
+	"frame": {"x":406,"y":133,"w":64,"h":64},
 	"rotated": false,
 	"trimmed": false,
 	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":64},
@@ -155,7 +164,7 @@
 },
 {
 	"filename": "tile_masks/tile_281_mask.png",
-	"frame": {"x":469,"y":133,"w":64,"h":64},
+	"frame": {"x":474,"y":133,"w":64,"h":64},
 	"rotated": false,
 	"trimmed": false,
 	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":64},
@@ -209,7 +218,7 @@
 },
 {
 	"filename": "tile_masks/tile_287_mask.png",
-	"frame": {"x":537,"y":180,"w":64,"h":64},
+	"frame": {"x":542,"y":180,"w":64,"h":64},
 	"rotated": false,
 	"trimmed": false,
 	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":64},
@@ -254,7 +263,7 @@
 },
 {
 	"filename": "tile_masks/tile_310_mask.png",
-	"frame": {"x":605,"y":205,"w":64,"h":64},
+	"frame": {"x":610,"y":205,"w":64,"h":64},
 	"rotated": false,
 	"trimmed": false,
 	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":64},
@@ -425,7 +434,7 @@
 },
 {
 	"filename": "tile_masks/tile_366_mask.png",
-	"frame": {"x":673,"y":227,"w":64,"h":64},
+	"frame": {"x":678,"y":227,"w":64,"h":64},
 	"rotated": false,
 	"trimmed": false,
 	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":64},
@@ -515,7 +524,7 @@
 },
 {
 	"filename": "tiles/tile_281.png",
-	"frame": {"x":741,"y":227,"w":64,"h":64},
+	"frame": {"x":746,"y":227,"w":64,"h":64},
 	"rotated": false,
 	"trimmed": false,
 	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":64},
@@ -524,7 +533,7 @@
 },
 {
 	"filename": "tiles/tile_282.png",
-	"frame": {"x":809,"y":227,"w":64,"h":64},
+	"frame": {"x":814,"y":227,"w":64,"h":64},
 	"rotated": false,
 	"trimmed": false,
 	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":64},
@@ -533,7 +542,7 @@
 },
 {
 	"filename": "tiles/tile_283.png",
-	"frame": {"x":877,"y":227,"w":64,"h":64},
+	"frame": {"x":882,"y":227,"w":64,"h":64},
 	"rotated": false,
 	"trimmed": false,
 	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":64},
@@ -542,7 +551,7 @@
 },
 {
 	"filename": "tiles/tile_284.png",
-	"frame": {"x":945,"y":227,"w":64,"h":64},
+	"frame": {"x":950,"y":227,"w":64,"h":64},
 	"rotated": false,
 	"trimmed": false,
 	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":64},
@@ -943,6 +952,6 @@
 	"format": "RGBA8888",
 	"size": {"w":1024,"h":1024},
 	"scale": "1",
-	"smartupdate": "$TexturePacker:SmartUpdate:18c90cabb836d23e0e87158406d07f23:a298adef016968da7ef195166dd9326f:1eabdf11f75e3a4fe3147baf7b5be24b$"
+	"smartupdate": "$TexturePacker:SmartUpdate:50fa28188a04d9ef5adbd6206844b7f9:5a942e2ed6c73fb5db449eca1899762e:1eabdf11f75e3a4fe3147baf7b5be24b$"
 }
 }

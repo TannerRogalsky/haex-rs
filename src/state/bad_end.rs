@@ -311,47 +311,74 @@ impl BadEnd {
 
                 let boss = ctx.resources.sprites_metadata.boss_body;
                 let boss_accent = ctx.resources.sprites_metadata.boss_color;
+                let empty = ctx.resources.sprites_metadata.empty.uvs;
 
-                for (show, coord) in self.boss_show.iter() {
-                    if *show {
-                        let [tw, th] = self.map.tile_size;
-                        let [gw, gh] = self.map.grid.grid_size();
-                        let (px, py) = self.map.coord_to_mid_pixel(coord);
+                let vertices = self
+                    .boss_show
+                    .iter()
+                    .filter_map(|(show, coord)| {
+                        use solstice_2d::solstice::quad_batch::Quad;
+                        if *show {
+                            let [tw, th] = self.map.tile_size;
+                            let [gw, gh] = self.map.grid.grid_size();
+                            let (px, py) = self.map.coord_to_mid_pixel(coord);
 
-                        let positions = solstice_2d::Rectangle {
-                            x: px - tw / 2.,
-                            y: py - th / 2.,
-                            width: tw,
-                            height: th,
-                        };
+                            let positions = solstice_2d::Rectangle {
+                                x: px - tw / 2.,
+                                y: py - th / 2.,
+                                width: tw,
+                                height: th,
+                            };
 
-                        let sub = |mut uvs: solstice_2d::Rectangle| {
-                            let u = uvs.width / gw as f32;
-                            let v = uvs.height / gh as f32;
-                            uvs.x += coord.0 as f32 * u;
-                            uvs.y += coord.1 as f32 * v;
-                            uvs.width = u;
-                            uvs.height = v;
-                            uvs
-                        };
+                            let sub = |mut uvs: solstice_2d::Rectangle| {
+                                let u = uvs.width / gw as f32;
+                                let v = uvs.height / gh as f32;
+                                uvs.x += coord.0 as f32 * u;
+                                uvs.y += coord.1 as f32 * v;
+                                uvs.width = u;
+                                uvs.height = v;
+                                uvs
+                            };
 
-                        ctx.g.draw_with_color(positions, [0., 0., 0., 1.]);
-                        ctx.g.image(
-                            crate::UVRect {
+                            let mut vertices = [solstice_2d::Vertex2D::default(); 3 * 4];
+                            Quad::from(crate::UVRect {
+                                positions,
+                                uvs: empty,
+                            })
+                            .vertices
+                            .swap_with_slice(&mut vertices[0..4]);
+                            for vertices in &mut vertices[0..4] {
+                                vertices.color[0..3].fill(0.);
+                            }
+                            Quad::from(crate::UVRect {
                                 positions,
                                 uvs: sub(boss.uvs),
-                            },
-                            &ctx.resources.sprites,
-                        );
-                        ctx.g.image(
-                            crate::UVRect {
+                            })
+                            .vertices
+                            .swap_with_slice(&mut vertices[4..8]);
+                            Quad::from(crate::UVRect {
                                 positions,
                                 uvs: sub(boss_accent.uvs),
-                            },
-                            &ctx.resources.sprites,
-                        );
-                    }
-                }
+                            })
+                            .vertices
+                            .swap_with_slice(&mut vertices[8..12]);
+
+                            Some(std::array::IntoIter::new(vertices))
+                        } else {
+                            None
+                        }
+                    })
+                    .flatten()
+                    .collect::<Vec<_>>();
+                let indices = (0..(vertices.len() / 4))
+                    .flat_map(|i| {
+                        let offset = i as u32 * 4;
+                        std::array::IntoIter::new(solstice_2d::solstice::quad_batch::INDICES)
+                            .map(move |i| i as u32 + offset)
+                    })
+                    .collect::<Vec<_>>();
+                let geometry = solstice_2d::Geometry::new(vertices, Some(indices));
+                ctx.g.image(geometry, &ctx.resources.sprites);
 
                 for coord in std::array::IntoIter::new(ENEMY_POS) {
                     let (x, y) = self.map.coord_to_mid_pixel(coord);

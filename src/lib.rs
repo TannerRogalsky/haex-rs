@@ -139,8 +139,8 @@ impl Game {
         let canvas = solstice_2d::Canvas::with_settings(
             &mut ctx,
             solstice_2d::solstice::canvas::Settings {
-                width: 1080,
-                height: 1080,
+                width: 1024,
+                height: 1024,
                 with_depth: false,
                 filter,
                 ..Default::default()

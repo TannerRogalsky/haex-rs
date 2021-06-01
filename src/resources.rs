@@ -253,6 +253,7 @@ pub struct Sprites {
     pub title_tanner: crate::UVRect,
     pub title_tanner_white: crate::UVRect,
     pub title_title: crate::UVRect,
+    pub empty: crate::UVRect,
 }
 
 impl Sprites {
@@ -282,6 +283,7 @@ impl Sprites {
             title_tanner: raw.remove("title_tanner.png")?,
             title_tanner_white: raw.remove("title_tanner_white.png")?,
             title_title: raw.remove("title_title.png")?,
+            empty: raw.remove("empty.png")?,
         })
     }
 }
