@@ -156,7 +156,8 @@ impl Main {
                             ProgressionType::Standard(settings) => {
                                 // let to = Self::with_seed(&mut ctx, seed, self.progression.clone());
                                 let to = Self::with_seed(&mut ctx, seed, (**settings).clone());
-                                if let Ok(to) = to {
+                                if let Ok(mut to) = to {
+                                    to.player.programs = self.player.programs;
                                     return State::MainToMain(
                                         super::rotate_transition::RotateTransition {
                                             from: self,

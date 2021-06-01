@@ -14,7 +14,7 @@ enum State {
     Moving(Moving),
 }
 
-#[derive(Default)]
+#[derive(Default, Copy, Clone, Eq, PartialEq)]
 pub struct Programs {
     pub nop_slide: usize,
     pub clip_count: usize,
